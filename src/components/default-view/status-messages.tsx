@@ -1,9 +1,12 @@
 import { Card } from "@/components/ui/card";
-import { useAppStore } from "@/lib/store";
+import type { ActionState } from "@/lib/types";
 
-export function StatusMessages() {
-  const { actionState, showDemo } = useAppStore();
+interface StatusMessagesProps {
+  actionState: ActionState;
+  showDemo: boolean;
+}
 
+export function StatusMessages({ actionState, showDemo }: StatusMessagesProps) {
   if (!actionState) return null;
 
   return (

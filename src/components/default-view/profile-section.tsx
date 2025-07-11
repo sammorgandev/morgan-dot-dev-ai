@@ -5,7 +5,7 @@ import Image from "next/image";
 export function ProfileSection() {
   return (
     <div className="text-center space-y-4">
-      <div className="space-y-2 flex flex-col items-center">
+      <div className="space-y-2 flex flex-col items-start">
         <div className="rounded-full overflow-hidden w-fit">
           <Image
             src="/pic.jpg"
@@ -19,7 +19,7 @@ export function ProfileSection() {
         <p className="text-lg text-muted-foreground">Software Engineer</p>
       </div>
 
-      <div className="flex flex-col gap-2 items-center justify-center text-sm text-muted-foreground">
+      <div className="flex flex-col gap-2 text-left items-start justify-start text-sm text-muted-foreground">
         <div>
           Currently working on AI{" "}
           <a
@@ -45,7 +45,7 @@ export function ProfileSection() {
       </div>
 
       {/* Social Links */}
-      <div className="flex items-center justify-center space-x-4 pt-2">
+      <div className="flex items-start justify-start space-x-4 pt-2">
         <Button variant="ghost" size="sm" asChild>
           <a
             href="https://github.com/sammorgan"
