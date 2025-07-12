@@ -23,38 +23,33 @@
    npx convex run seedData:seedAllData
    ```
 
-4. **Enable Convex connections:**
-   Uncomment the Convex imports in the following files:
+## Optimized Data Loading Architecture
 
-   - `src/app/projects/page.tsx`
-   - `src/app/projects/[id]/page.tsx`
-   - `src/app/blog/page.tsx`
-   - `src/app/blog/[slug]/page.tsx`
+This portfolio uses an optimized data loading strategy with Convex and Next.js 15:
 
-   Replace the commented lines:
+### Key Features:
 
-   ```typescript
-   // import { useQuery } from "convex/react";
-   // import { api } from "../../../convex/_generated/api";
-   ```
+- **Centralized Queries**: Single consolidated queries for blog and portfolio data
+- **preloadQuery Pattern**: Server components use `preloadQuery` for optimal performance
+- **No Unnecessary Layers**: Direct integration between components and Convex
+- **Consolidated Components**: Single components handle all data sections
 
-   With:
+### Data Loading Structure:
 
-   ```typescript
-   import { useQuery } from "convex/react";
-   import { api } from "../../../convex/_generated/api";
-   ```
+**Blog Data**:
 
-   And update the data loading:
+- `api.blogPosts.getBlogData` - Returns all posts, featured posts, recent posts, and tags in one query
+- Consumed by `BlogPageContent` component
 
-   ```typescript
-   // Replace this:
-   // const projects = useQuery(api.portfolioProjects.getAllProjects);
+**Portfolio Data**:
 
-   // With this:
-   const projects = useQuery(api.portfolioProjects.getAllProjects);
-   const displayProjects = projects || sampleProjects;
-   ```
+- `api.portfolioProjects.getPortfolioData` - Returns all projects, featured projects, and projects by status in one query
+- Consumed by `ProjectPageContent` component
+
+**Individual Items**:
+
+- `api.blogPosts.getPostBySlug` - Single blog post by slug
+- `api.portfolioProjects.getById` - Single project by ID
 
 ## Database Schema
 
@@ -81,34 +76,10 @@ The seed script creates:
 - 6 detailed blog posts covering technical topics
 - All data matches Sam Morgan's actual experience and expertise
 
-## Cross-Site Origin Considerations
+## Performance Benefits
 
-For generated sites in iframes, the Convex connection may face CORS issues. Consider:
-
-1. **Environment Variables**: Ensure NEXT_PUBLIC_CONVEX_URL is properly set
-2. **Convex Auth**: May need to configure public access for read-only queries
-3. **Alternative**: Pre-generate static data for iframe deployments
-
-## Development
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-The site will be available at `http://localhost:3000` with:
-
-- `/` - Home page with AI generation form
-- `/resume` - Complete professional resume
-- `/projects` - Portfolio projects with detail pages
-- `/blog` - Blog posts with full article pages
-
-## Generated Sites
-
-When sites are generated via v0, they should:
-
-1. Include all three main sections (resume, projects, blog)
-2. Connect to Convex for live data (if possible)
-3. Fall back to sample data for iframe environments
-4. Maintain navigation and styling consistency
+- **Fewer Database Calls**: Single queries vs multiple separate calls
+- **Faster Initial Load**: `preloadQuery` enables instant server-side rendering
+- **Better Caching**: Leverages Convex's built-in query optimization
+- **Reduced Bundle Size**: Eliminated unnecessary abstraction layers
+- **Cleaner Architecture**: Consolidated components and data flows

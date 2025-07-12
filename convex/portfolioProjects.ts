@@ -1,45 +1,42 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Query all portfolio projects
-export const getAllProjects = query({
+// Consolidated query that handles all portfolio project fetching needs
+export const getPortfolioData = query({
   handler: async (ctx) => {
-    return await ctx.db
+    const projects = await ctx.db
       .query("portfolioProjects")
       .withIndex("by_created_at")
       .order("desc")
       .collect();
+
+    // Separate featured and all projects
+    const featuredProjects = projects.filter((project) => project.featured);
+    const projectsByStatus = {
+      completed: projects.filter((project) => project.status === "completed"),
+      in_progress: projects.filter(
+        (project) => project.status === "in_progress"
+      ),
+      archived: projects.filter((project) => project.status === "archived"),
+    };
+
+    return {
+      allProjects: projects,
+      featuredProjects,
+      projectsByStatus,
+    };
   },
 });
 
-// Query featured portfolio projects
-export const getFeaturedProjects = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("portfolioProjects")
-      .withIndex("by_featured", (q) => q.eq("featured", true))
-      .collect();
-  },
-});
-
-// Query projects by status
-export const getProjectsByStatus = query({
-  args: {
-    status: v.union(
-      v.literal("completed"),
-      v.literal("in_progress"),
-      v.literal("archived")
-    ),
-  },
+// Keep existing single project query for project detail pages
+export const getById = query({
+  args: { id: v.id("portfolioProjects") },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("portfolioProjects")
-      .withIndex("by_status", (q) => q.eq("status", args.status))
-      .collect();
+    return await ctx.db.get(args.id);
   },
 });
 
-// Create a new portfolio project
+// Admin queries for managing portfolio projects
 export const createProject = mutation({
   args: {
     title: v.string(),
@@ -68,7 +65,6 @@ export const createProject = mutation({
   },
 });
 
-// Update an existing portfolio project
 export const updateProject = mutation({
   args: {
     id: v.id("portfolioProjects"),
@@ -99,15 +95,6 @@ export const updateProject = mutation({
   },
 });
 
-// Get a single portfolio project by ID
-export const getById = query({
-  args: { id: v.id("portfolioProjects") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
-  },
-});
-
-// Delete a portfolio project
 export const deleteProject = mutation({
   args: { id: v.id("portfolioProjects") },
   handler: async (ctx, args) => {

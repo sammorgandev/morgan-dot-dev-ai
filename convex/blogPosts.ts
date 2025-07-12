@@ -1,39 +1,33 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Query all published blog posts
-export const getAllPosts = query({
+// Consolidated query that handles all blog post fetching needs
+export const getBlogData = query({
   handler: async (ctx) => {
-    return await ctx.db
+    const posts = await ctx.db
       .query("blogPosts")
       .withIndex("by_published", (q) => q.eq("published", true))
       .order("desc")
       .collect();
+
+    // Extract unique tags from all posts
+    const allTags = posts.flatMap((post) => post.tags);
+    const uniqueTags = [...new Set(allTags)].sort();
+
+    // Separate featured and recent posts
+    const featuredPosts = posts.filter((post) => post.featured);
+    const recentPosts = posts.filter((post) => !post.featured).slice(0, 6);
+
+    return {
+      allPosts: posts,
+      featuredPosts,
+      recentPosts,
+      tags: uniqueTags,
+    };
   },
 });
 
-// Query blog posts by published date
-export const getPostsByDate = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("blogPosts")
-      .withIndex("by_published_at")
-      .order("desc")
-      .collect();
-  },
-});
-
-// Query featured blog posts
-export const getFeaturedPosts = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("blogPosts")
-      .withIndex("by_featured", (q) => q.eq("featured", true))
-      .collect();
-  },
-});
-
-// Query blog post by slug
+// Keep existing single post query for blog detail pages
 export const getPostBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
@@ -44,7 +38,7 @@ export const getPostBySlug = query({
   },
 });
 
-// Query blog posts by tag
+// Query blog posts by tag (optimized)
 export const getPostsByTag = query({
   args: { tag: v.string() },
   handler: async (ctx, args) => {
@@ -57,7 +51,7 @@ export const getPostsByTag = query({
   },
 });
 
-// Create a new blog post
+// Admin queries for managing blog posts
 export const createPost = mutation({
   args: {
     title: v.string(),
@@ -81,7 +75,6 @@ export const createPost = mutation({
   },
 });
 
-// Update an existing blog post
 export const updatePost = mutation({
   args: {
     id: v.id("blogPosts"),
@@ -105,23 +98,9 @@ export const updatePost = mutation({
   },
 });
 
-// Delete a blog post
 export const deletePost = mutation({
   args: { id: v.id("blogPosts") },
   handler: async (ctx, args) => {
     return await ctx.db.delete(args.id);
-  },
-});
-
-// Get unique tags
-export const getAllTags = query({
-  handler: async (ctx) => {
-    const posts = await ctx.db
-      .query("blogPosts")
-      .withIndex("by_published", (q) => q.eq("published", true))
-      .collect();
-
-    const allTags = posts.flatMap((post) => post.tags);
-    return [...new Set(allTags)].sort();
   },
 });

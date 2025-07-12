@@ -4,13 +4,13 @@ import {
   BlogPostSkeletonList,
 } from "@/components/loading/blog-post-skeleton";
 import Header from "@/components/Header";
-import FeaturedPosts from "./featured-posts";
-import RecentPosts from "./recent-posts";
-import AllPosts from "./all-posts";
 import { Card } from "@/components/ui/card";
-import TagsCloud from "./tags-cloud";
+import { preloadBlogData } from "@/lib/data-loading";
+import { BlogPageContent } from "./blog-page-content";
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  const preloadedBlogData = await preloadBlogData();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
@@ -26,37 +26,27 @@ export default function BlogPage() {
           </p>
         </div>
 
-        {/* Featured Posts */}
-        <Suspense fallback={<BlogPostSkeletonGrid />}>
-          <FeaturedPosts />
-        </Suspense>
-
-        {/* Recent Posts */}
-        <Suspense fallback={<BlogPostSkeletonList />}>
-          <RecentPosts />
-        </Suspense>
-
-        {/* All Posts Archive */}
-        <Suspense fallback={<BlogPostSkeletonList />}>
-          <AllPosts />
-        </Suspense>
-
-        {/* Tags Cloud */}
+        {/* Blog Content with Preloaded Data */}
         <Suspense
           fallback={
-            <Card className="p-6">
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-8 w-16 bg-muted animate-pulse rounded"
-                  />
-                ))}
-              </div>
-            </Card>
+            <div className="space-y-12">
+              <BlogPostSkeletonGrid />
+              <BlogPostSkeletonList />
+              <BlogPostSkeletonList />
+              <Card className="p-6">
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-8 w-16 bg-muted animate-pulse rounded"
+                    />
+                  ))}
+                </div>
+              </Card>
+            </div>
           }
         >
-          <TagsCloud />
+          <BlogPageContent preloadedBlogData={preloadedBlogData} />
         </Suspense>
       </main>
     </div>

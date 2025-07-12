@@ -4,10 +4,12 @@ import {
   ProjectSkeletonSmallGrid,
 } from "@/components/loading/project-skeleton";
 import Header from "@/components/Header";
-import FeaturedProjects from "@/components/projects/featured-projects";
-import AllProjects from "@/components/projects/all-projects";
+import { preloadPortfolioData } from "@/lib/data-loading";
+import { ProjectPageContent } from "./project-page-content";
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const preloadedPortfolioData = await preloadPortfolioData();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
@@ -23,14 +25,16 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {/* Featured Projects */}
-        <Suspense fallback={<ProjectSkeletonGrid />}>
-          <FeaturedProjects />
-        </Suspense>
-
-        {/* All Projects */}
-        <Suspense fallback={<ProjectSkeletonSmallGrid />}>
-          <AllProjects />
+        {/* Projects Content with Preloaded Data */}
+        <Suspense
+          fallback={
+            <div className="space-y-12">
+              <ProjectSkeletonGrid />
+              <ProjectSkeletonSmallGrid />
+            </div>
+          }
+        >
+          <ProjectPageContent preloadedPortfolioData={preloadedPortfolioData} />
         </Suspense>
       </main>
     </div>
