@@ -66,7 +66,7 @@ export default defineSchema({
     .index("by_chat_id", ["chatId"])
     .index("by_timestamp", ["timestamp"]),
 
-  // New table for chat sessions
+  // Chat sessions table for managing chat state
   chatSessions: defineTable({
     projectId: v.id("projects"),
     chatId: v.string(),
@@ -82,5 +82,51 @@ export default defineSchema({
   })
     .index("by_project_id", ["projectId"])
     .index("by_chat_id", ["chatId"])
+    .index("by_status", ["status"])
     .index("by_last_activity", ["lastActivity"]),
+
+  // Portfolio projects table
+  portfolioProjects: defineTable({
+    title: v.string(),
+    description: v.string(),
+    longDescription: v.optional(v.string()),
+    technologies: v.array(v.string()),
+    githubUrl: v.optional(v.string()),
+    liveUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    featured: v.boolean(),
+    status: v.union(
+      v.literal("completed"),
+      v.literal("in_progress"),
+      v.literal("archived")
+    ),
+    startDate: v.string(),
+    endDate: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_featured", ["featured"])
+    .index("by_status", ["status"])
+    .index("by_created_at", ["createdAt"]),
+
+  // Blog posts table
+  blogPosts: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    excerpt: v.string(),
+    content: v.string(),
+    author: v.string(),
+    tags: v.array(v.string()),
+    published: v.boolean(),
+    featured: v.boolean(),
+    readingTime: v.number(),
+    publishedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_published", ["published"])
+    .index("by_featured", ["featured"])
+    .index("by_slug", ["slug"])
+    .index("by_published_at", ["publishedAt"])
+    .index("by_tags", ["tags"]),
 });

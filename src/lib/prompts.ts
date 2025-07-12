@@ -42,14 +42,102 @@ IMPORTANT: Keep all the following content exactly as specified:
 
 The site should maintain its core functionality but be redesigned based on this style request: "${userPrompt}"
 
-Build this as a single-page React component using Next.js, TypeScript, and Tailwind CSS. Make it fully responsive and maintain excellent UX/UI principles. Include hover effects, smooth transitions, and modern styling patterns.
+Build this as a complete multi-page React application using Next.js, TypeScript, and Tailwind CSS. Make it fully responsive and maintain excellent UX/UI principles. Include hover effects, smooth transitions, and modern styling patterns.
 
-The layout should include:
-1. A header with the profile image and name
-2. Professional subtitle and work history
-3. Social media links
-4. A prominent call-to-action area
-5. Footer with the specified text
+REQUIRED PAGES AND NAVIGATION:
+The site must include navigation to these pages:
+1. Home - Main landing page
+2. Resume - Complete professional resume
+3. Projects - Portfolio of projects
+4. Blog - Blog posts and articles
 
-Focus on making it visually appealing while keeping the exact content and links specified above.`;
+HOME PAGE should include:
+1. A header with navigation links to Resume, Projects, and Blog
+2. Profile image and name
+3. Professional subtitle and work history
+4. Social media links
+5. A prominent call-to-action area
+6. Footer with the specified text
+
+RESUME PAGE should include:
+- Complete professional resume with Sam's experience:
+  * Software Engineer, AI Team @ Bubble (2025-Present)
+  * Internal Bubble Developer @ Bubble (2022-2025) - user onboarding flows, account settings, app management
+  * Technical Product Support Specialist @ Bubble (2021-2022)
+  * Content Generation Developer @ Science4Data (2023-Present, Contract) - SEC data APIs, financial reports
+  * No-Code App Coach, Freelance (2020-2021)
+  * Founder & Operator @ soiheardmusic (2012-2022)
+- Education: Berklee College of Music (2007-2011)
+- Skills: JavaScript, TypeScript, Python, React, Next.js, AI/ML, No-Code Development
+- Professional summary highlighting AI, no-code, and technical support experience
+
+PROJECTS PAGE should include:
+Dynamic data from Convex database (portfolioProjects table) with fallback to realistic sample data:
+1. AI-Powered Content Generator - Next.js, OpenAI API, SEC data integration
+2. Bubble App Builder Assistant - Internal tool for user onboarding  
+3. SEC Data Analysis Dashboard - Python, FastAPI, financial insights
+4. No-Code Learning Platform - Educational platform with interactive courses
+5. Music Discovery Algorithm - ML-powered recommendation system from soiheardmusic days
+
+Each project should show:
+- Title, description, and detailed longDescription
+- Technologies array with comprehensive tech stack
+- GitHub links and live demo links where available
+- Status (completed, in_progress, archived) with proper styling
+- Featured/non-featured categorization
+- Individual project detail pages at /projects/[id]
+
+BLOG PAGE should include:
+Dynamic data from Convex database (blogPosts table) with fallback to realistic sample data:
+1. "Building AI-Powered Applications with Next.js and OpenAI"
+2. "The Future of No-Code Development"
+3. "From Music to Code: My Journey into Software Engineering"
+4. "Analyzing SEC Data: Building Financial Intelligence Tools"
+5. "User Onboarding: Lessons from Building Internal Tools at Bubble"
+6. "Machine Learning in Music: Building Recommendation Systems"
+
+Each blog post should include:
+- Title, excerpt, and full markdown content
+- Author (Sam Morgan), publication date, reading time
+- Tags array for categorization
+- Featured/recent post sections
+- Individual blog post detail pages at /blog/[slug]
+
+DATA CONNECTION REQUIREMENTS:
+- Import Convex client: useQuery from "convex/react"
+- Import API: api from "convex/_generated/api"
+- Use queries: api.portfolioProjects.getAllProjects and api.blogPosts.getAllPosts
+- Implement fallback: const displayData = convexData || sampleData
+- Handle loading states with skeleton UI or sample data
+- NOTE: For iframe deployments, Convex connections may fail due to cross-origin restrictions
+- Always provide comprehensive sample data as fallback
+
+TECHNICAL REQUIREMENTS:
+- Use Next.js App Router with proper routing (/resume, /projects, /blog, /projects/[id], /blog/[slug])
+- Implement proper TypeScript interfaces for all data structures
+- Use Tailwind CSS for styling with consistent design system
+- Include hover effects, transitions, and responsive design
+- Maintain navigation consistency across all pages
+- Use lucide-react icons throughout
+- Follow the same visual style and color scheme across all pages
+
+CONVEX INTEGRATION:
+- Wrap app with ConvexProvider using NEXT_PUBLIC_CONVEX_URL
+- Import useQuery from "convex/react" for data fetching
+- Use api.portfolioProjects.getAllProjects for projects data
+- Use api.blogPosts.getAllPosts for blog data
+- Implement proper loading states and error handling
+- Provide fallback sample data for cross-origin scenarios
+- Handle both empty states and loading states gracefully
+
+CROSS-ORIGIN CONSIDERATIONS:
+- For iframe deployment (v0 generated sites), Convex connections may fail
+- Always include comprehensive sample data as fallback
+- Use conditional rendering: {convexData?.length > 0 ? convexData : sampleData}
+- Test both connected and disconnected states
+- Ensure site works perfectly even without Convex connection
+
+The design should be cohesive across all pages while adapting to the specific style request: "${userPrompt}"
+
+Focus on making it visually appealing, professional, and fully functional with realistic sample content that reflects Sam's actual experience and expertise.`;
 };
