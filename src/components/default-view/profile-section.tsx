@@ -16,10 +16,10 @@ export function ProfileSection() {
           />
         </div>
         <h1 className="text-4xl font-bold tracking-tight">Sam Morgan</h1>
-        <p className="text-lg text-muted-foreground">Software Engineer</p>
+        <p className="text-xl text-muted-foreground">Software Engineer</p>
       </div>
 
-      <div className="flex flex-col gap-2 text-left items-start justify-start text-sm text-muted-foreground">
+      <div className="text-lg text-muted-foreground flex flex-col gap-2 text-left items-start justify-start">
         <div>
           Currently working on AI{" "}
           <a
@@ -28,7 +28,7 @@ export function ProfileSection() {
             rel="noopener noreferrer"
             className="font-medium text-foreground hover:underline"
           >
-            @Bubble
+            <span className="hover:scale-105 transition-all">@Bubble</span>
           </a>
         </div>
         <div>

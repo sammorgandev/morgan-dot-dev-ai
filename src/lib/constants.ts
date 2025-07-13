@@ -6,7 +6,7 @@ export const BASE_URL = process.env.VERCEL_URL
 
 // Use a public HTTPS URL for images to avoid CORS issues in generated demos
 export const PUBLIC_IMAGE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
+  ? `http://localhost:3001`
   : "https://morgan.dev"; // Always use HTTPS for images
 
 export const DESIGN_KEYWORDS = [

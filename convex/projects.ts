@@ -58,6 +58,21 @@ export const updateProjectStatus = mutation({
   },
 });
 
+// Mutation to update project local URL
+export const updateProjectLocalUrl = mutation({
+  args: {
+    projectId: v.id("projects"),
+    localUrl: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      localUrl: args.localUrl,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 // Mutation to add error to project history
 export const addProjectError = mutation({
   args: {
@@ -87,6 +102,112 @@ export const addProjectError = mutation({
       errorHistory: updatedErrorHistory,
       status: "error",
       updatedAt: Date.now(),
+    });
+  },
+});
+
+// Mutation to start deployment process
+export const startDeployment = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.projectId, {
+      deploymentStatus: "syncing",
+      deploymentStartedAt: now,
+      deploymentCompletedAt: undefined,
+      deploymentError: undefined,
+      updatedAt: now,
+    });
+  },
+});
+
+// Mutation to update deployment status
+export const updateDeploymentStatus = mutation({
+  args: {
+    projectId: v.id("projects"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("syncing"),
+      v.literal("deploying"),
+      v.literal("deployed"),
+      v.literal("failed")
+    ),
+    commitSha: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const updateData: {
+      deploymentStatus:
+        | "pending"
+        | "syncing"
+        | "deploying"
+        | "deployed"
+        | "failed";
+      updatedAt: number;
+      githubCommitSha?: string;
+      deploymentError?: string;
+      deploymentCompletedAt?: number;
+    } = {
+      deploymentStatus: args.status,
+      updatedAt: now,
+    };
+
+    if (args.commitSha) {
+      updateData.githubCommitSha = args.commitSha;
+    }
+
+    if (args.error) {
+      updateData.deploymentError = args.error;
+    }
+
+    if (args.status === "deployed") {
+      updateData.deploymentCompletedAt = now;
+    }
+
+    await ctx.db.patch(args.projectId, updateData);
+  },
+});
+
+// Mutation to complete deployment
+export const completeDeployment = mutation({
+  args: {
+    projectId: v.id("projects"),
+    localUrl: v.string(),
+    commitSha: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.projectId, {
+      deploymentStatus: "deployed",
+      localUrl: args.localUrl,
+      deploymentCompletedAt: now,
+      deploymentError: undefined,
+      ...(args.commitSha && { githubCommitSha: args.commitSha }),
+      updatedAt: now,
+    });
+  },
+});
+
+// Mutation to fail deployment
+export const failDeployment = mutation({
+  args: {
+    projectId: v.id("projects"),
+    error: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.projectId, {
+      deploymentStatus: "failed",
+      deploymentError: args.error,
+      deploymentCompletedAt: now,
+      updatedAt: now,
     });
   },
 });
@@ -270,6 +391,7 @@ export const getRecentProjects = query({
       _creationTime: v.number(),
       prompt: v.string(),
       demoUrl: v.optional(v.string()),
+      localUrl: v.optional(v.string()),
       chatId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
@@ -291,6 +413,20 @@ export const getRecentProjects = query({
           })
         )
       ),
+      // Deployment tracking fields
+      deploymentStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("syncing"),
+          v.literal("deploying"),
+          v.literal("deployed"),
+          v.literal("failed")
+        )
+      ),
+      githubCommitSha: v.optional(v.string()),
+      deploymentStartedAt: v.optional(v.number()),
+      deploymentCompletedAt: v.optional(v.number()),
+      deploymentError: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -314,6 +450,7 @@ export const getProject = query({
       _creationTime: v.number(),
       prompt: v.string(),
       demoUrl: v.optional(v.string()),
+      localUrl: v.optional(v.string()),
       chatId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
@@ -335,6 +472,20 @@ export const getProject = query({
           })
         )
       ),
+      // Deployment tracking fields
+      deploymentStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("syncing"),
+          v.literal("deploying"),
+          v.literal("deployed"),
+          v.literal("failed")
+        )
+      ),
+      githubCommitSha: v.optional(v.string()),
+      deploymentStartedAt: v.optional(v.number()),
+      deploymentCompletedAt: v.optional(v.number()),
+      deploymentError: v.optional(v.string()),
     }),
     v.null()
   ),
@@ -401,6 +552,7 @@ export const getProjectWithFiles = query({
         _creationTime: v.number(),
         prompt: v.string(),
         demoUrl: v.optional(v.string()),
+        localUrl: v.optional(v.string()),
         chatId: v.optional(v.string()),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
@@ -426,6 +578,20 @@ export const getProjectWithFiles = query({
             })
           )
         ),
+        // Deployment tracking fields
+        deploymentStatus: v.optional(
+          v.union(
+            v.literal("pending"),
+            v.literal("syncing"),
+            v.literal("deploying"),
+            v.literal("deployed"),
+            v.literal("failed")
+          )
+        ),
+        githubCommitSha: v.optional(v.string()),
+        deploymentStartedAt: v.optional(v.number()),
+        deploymentCompletedAt: v.optional(v.number()),
+        deploymentError: v.optional(v.string()),
       }),
       files: v.array(
         v.object({
@@ -477,6 +643,7 @@ export const getFullProjectData = query({
         _creationTime: v.number(),
         prompt: v.string(),
         demoUrl: v.optional(v.string()),
+        localUrl: v.optional(v.string()),
         chatId: v.optional(v.string()),
         createdAt: v.number(),
         updatedAt: v.optional(v.number()),
@@ -502,6 +669,20 @@ export const getFullProjectData = query({
             })
           )
         ),
+        // Deployment tracking fields
+        deploymentStatus: v.optional(
+          v.union(
+            v.literal("pending"),
+            v.literal("syncing"),
+            v.literal("deploying"),
+            v.literal("deployed"),
+            v.literal("failed")
+          )
+        ),
+        githubCommitSha: v.optional(v.string()),
+        deploymentStartedAt: v.optional(v.number()),
+        deploymentCompletedAt: v.optional(v.number()),
+        deploymentError: v.optional(v.string()),
       }),
       files: v.array(
         v.object({
@@ -604,6 +785,7 @@ export const getProjectsWithDemos = query({
       _creationTime: v.number(),
       prompt: v.string(),
       demoUrl: v.optional(v.string()),
+      localUrl: v.optional(v.string()),
       chatId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.optional(v.number()),
@@ -611,6 +793,20 @@ export const getProjectsWithDemos = query({
         v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
       ),
       screenshotStorageId: v.optional(v.id("_storage")),
+      // Deployment tracking fields
+      deploymentStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("syncing"),
+          v.literal("deploying"),
+          v.literal("deployed"),
+          v.literal("failed")
+        )
+      ),
+      githubCommitSha: v.optional(v.string()),
+      deploymentStartedAt: v.optional(v.number()),
+      deploymentCompletedAt: v.optional(v.number()),
+      deploymentError: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {

@@ -15,6 +15,7 @@ import {
   captureScreenshotWithRetry,
   uploadScreenshotToConvex,
 } from "@/lib/screenshot";
+import { syncGeneratedSite, checkDeploymentStatus } from "@/lib/github-sync";
 
 // Validate the user's prompt
 function validatePrompt(prompt: string): { isValid: boolean; error?: string } {
@@ -134,6 +135,43 @@ Feel free to be creative with the layout, styling, animations, and overall desig
         projectId,
         files,
       });
+
+      // Start deployment process
+      await convex.mutation(api.projects.startDeployment, {
+        projectId,
+      });
+
+      // Start GitHub sync process asynchronously
+      syncGeneratedSite(projectId, files)
+        .then(async (syncResult) => {
+          if (syncResult.success) {
+            // Mark deployment as successful
+            await convex.mutation(api.projects.completeDeployment, {
+              projectId,
+              localUrl: syncResult.localUrl!,
+              commitSha: syncResult.commitSha,
+            });
+
+            // Wait for deployment to be live
+            const isDeployed = await checkDeploymentStatus(projectId);
+            if (isDeployed) {
+              console.log("Deployment is live for project:", projectId);
+            }
+          } else {
+            // Mark deployment as failed
+            await convex.mutation(api.projects.failDeployment, {
+              projectId,
+              error: syncResult.error || "Unknown deployment error",
+            });
+          }
+        })
+        .catch(async (error) => {
+          console.error("GitHub sync failed:", error);
+          await convex.mutation(api.projects.failDeployment, {
+            projectId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
     }
 
     // Save initial messages to database
@@ -293,6 +331,43 @@ export async function continueChat(
         projectId: projectId as Id<"projects">,
         files,
       });
+
+      // Start deployment process
+      await convex.mutation(api.projects.startDeployment, {
+        projectId: projectId as Id<"projects">,
+      });
+
+      // Start GitHub sync process asynchronously
+      syncGeneratedSite(projectId, files)
+        .then(async (syncResult) => {
+          if (syncResult.success) {
+            // Mark deployment as successful
+            await convex.mutation(api.projects.completeDeployment, {
+              projectId: projectId as Id<"projects">,
+              localUrl: syncResult.localUrl!,
+              commitSha: syncResult.commitSha,
+            });
+
+            // Wait for deployment to be live
+            const isDeployed = await checkDeploymentStatus(projectId);
+            if (isDeployed) {
+              console.log("Deployment updated for project:", projectId);
+            }
+          } else {
+            // Mark deployment as failed
+            await convex.mutation(api.projects.failDeployment, {
+              projectId: projectId as Id<"projects">,
+              error: syncResult.error || "Unknown deployment error",
+            });
+          }
+        })
+        .catch(async (error) => {
+          console.error("GitHub sync failed:", error);
+          await convex.mutation(api.projects.failDeployment, {
+            projectId: projectId as Id<"projects">,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
     }
 
     // Update project status and demo URL
@@ -385,12 +460,76 @@ export async function handleErrorRecovery(
     return { error: "Project ID is required" };
   }
 
-  // Create error recovery message
-  const recoveryMessage = `The code returns the following error:
+  // Create more specific error recovery message based on error type
+  let recoveryMessage = "";
+
+  if (
+    errorMessage.includes("CORS") ||
+    errorMessage.includes("Access-Control-Allow-Origin") ||
+    errorMessage.includes("fonts.googleapis.com") ||
+    errorMessage.includes("esm.v0.dev")
+  ) {
+    recoveryMessage = `The website has CORS (Cross-Origin Resource Sharing) errors that prevent external resources from loading properly. The specific error is:
 
 ${errorMessage}
 
-Revise the code to address the error.`;
+Please fix this by:
+1. Replace ALL Google Fonts imports with system fonts (e.g., font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)
+2. Remove any external CDN imports that may have CORS restrictions
+3. Use inline styles or bundled CSS instead of external stylesheets
+4. Avoid importing resources from esm.v0.dev or other external sources
+5. Use local font files or web-safe fonts instead of Google Fonts
+
+IMPORTANT: Do not use any external font imports or CDN resources. Use only system fonts and local resources.`;
+  } else if (
+    errorMessage.includes("FatalRendererError") ||
+    errorMessage.includes("Failed to load global configs") ||
+    errorMessage.includes("Unsupported Content-Type") ||
+    errorMessage.includes("Modules must be served with a valid MIME type")
+  ) {
+    recoveryMessage = `The website has critical module loading errors that prevent it from rendering. The specific error is:
+
+${errorMessage}
+
+Please fix this by:
+1. Remove any external module imports that may be causing MIME type issues
+2. Use only standard React/TypeScript imports
+3. Avoid importing from esm.v0.dev or other external module sources
+4. Replace any problematic imports with local implementations
+5. Use standard Tailwind CSS classes instead of external config imports
+6. Ensure all imports are from standard npm packages or local files
+
+IMPORTANT: Focus on making the code work with standard React/TypeScript imports only.`;
+  } else if (
+    errorMessage.includes("Failed to load") ||
+    errorMessage.includes("loading issues")
+  ) {
+    recoveryMessage = `The website has resource loading errors. The specific error is:
+
+${errorMessage}
+
+Please fix this by:
+1. Checking that all imported resources exist and are accessible
+2. Using alternative resources if external CDNs are failing
+3. Adding proper error handling for failed resource loads
+4. Using fallback fonts or styles when external resources fail
+5. Simplifying the imports to use only standard React/TypeScript libraries
+
+Update the code to handle these loading issues gracefully.`;
+  } else {
+    // Generic error recovery message
+    recoveryMessage = `The code returns the following error:
+
+${errorMessage}
+
+Please revise the code to address this error. Focus on:
+1. Simplifying external dependencies
+2. Using standard React/TypeScript patterns
+3. Avoiding external resource imports that may fail
+4. Using system fonts instead of external fonts
+
+Update the code to make it work reliably.`;
+  }
 
   // Use the continue chat action to handle the error recovery
   const recoveryFormData = new FormData();

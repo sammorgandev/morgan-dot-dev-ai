@@ -6,6 +6,9 @@ import { IframeRenderer } from "./iframe-renderer";
 import { useUnifiedActions } from "@/hooks/useUnifiedActions";
 import { handleErrorRecovery, continueChat } from "@/app/actions";
 import { ChatMessage } from "@/lib/types";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 
 interface ActionResult {
   success?: boolean;
@@ -31,6 +34,29 @@ export function DemoViewer() {
   } = useAppStore();
 
   const { executeAction, isActionProcessing } = useUnifiedActions();
+
+  // Fetch project data to get localUrl and deployment status
+  const projectData = useQuery(
+    api.projects.getProject,
+    currentProjectId
+      ? { projectId: currentProjectId as Id<"projects"> }
+      : "skip"
+  );
+
+  // Determine the best URL to use based on deployment status
+  const effectiveUrl = (() => {
+    if (projectData?.deploymentStatus === "deployed" && projectData?.localUrl) {
+      return projectData.localUrl;
+    }
+    return demoUrl;
+  })();
+
+  // Check deployment status
+  const isDeployed = projectData?.deploymentStatus === "deployed";
+  const isDeploying =
+    projectData?.deploymentStatus === "syncing" ||
+    projectData?.deploymentStatus === "deploying";
+  const deploymentFailed = projectData?.deploymentStatus === "failed";
 
   // Handle automatic error recovery
   const handleAutoRecovery = async () => {
@@ -94,7 +120,7 @@ export function DemoViewer() {
       onSuccess: (result: unknown) => {
         const typedResult = result as ActionResult;
         if (typedResult?.success && typedResult.data) {
-          if (typedResult.data.demo && typedResult.data.demo !== demoUrl) {
+          if (typedResult.data.demo && typedResult.data.demo !== effectiveUrl) {
             setDemoUrl(typedResult.data.demo);
           }
           if (typedResult.data.messages) {
@@ -117,7 +143,7 @@ export function DemoViewer() {
     });
   };
 
-  if (!showDemo || !demoUrl) {
+  if (!showDemo || !effectiveUrl) {
     return null;
   }
 
@@ -143,6 +169,40 @@ export function DemoViewer() {
           </div>
         ) : (
           <>
+            {/* Deployment Status Indicator */}
+            {isDeploying && (
+              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 border z-10">
+                <div className="flex items-center gap-2 text-sm">
+                  <RefreshCw className="h-3 w-3 animate-spin text-primary" />
+                  <span className="text-muted-foreground">
+                    {projectData?.deploymentStatus === "syncing"
+                      ? "Syncing to GitHub..."
+                      : "Deploying..."}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Deployment Success Indicator */}
+            {isDeployed && (
+              <div className="absolute top-4 left-4 bg-green-50 backdrop-blur-sm rounded-lg p-2 border border-green-200 z-10">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-700">Live Site</span>
+                </div>
+              </div>
+            )}
+
+            {/* Deployment Failed Indicator */}
+            {deploymentFailed && (
+              <div className="absolute top-4 left-4 bg-red-50 backdrop-blur-sm rounded-lg p-2 border border-red-200 z-10">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                  <span className="text-red-700">Deployment Failed</span>
+                </div>
+              </div>
+            )}
+
             {/* Subtle loading overlay for follow-up messages */}
             {isActionProcessing("continue-chat") && (
               <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 border z-10">
@@ -154,7 +214,7 @@ export function DemoViewer() {
             )}
 
             <IframeRenderer
-              url={demoUrl}
+              url={effectiveUrl}
               onErrorRecovery={handleAutoRecovery}
               isRecovering={isActionProcessing("error-recovery")}
             />

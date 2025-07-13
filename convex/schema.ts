@@ -5,6 +5,7 @@ export default defineSchema({
   projects: defineTable({
     prompt: v.string(),
     demoUrl: v.optional(v.string()),
+    localUrl: v.optional(v.string()), // Local URL for persistent serving
     chatId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
@@ -27,10 +28,25 @@ export default defineSchema({
         })
       )
     ),
+    // Deployment tracking fields
+    deploymentStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("syncing"),
+        v.literal("deploying"),
+        v.literal("deployed"),
+        v.literal("failed")
+      )
+    ),
+    githubCommitSha: v.optional(v.string()),
+    deploymentStartedAt: v.optional(v.number()),
+    deploymentCompletedAt: v.optional(v.number()),
+    deploymentError: v.optional(v.string()),
   })
     .index("by_created_at", ["createdAt"])
     .index("by_chat_id", ["chatId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_deployment_status", ["deploymentStatus"]),
 
   files: defineTable({
     projectId: v.id("projects"),

@@ -17,11 +17,19 @@ type ProjectWithDemos = {
   _creationTime: number;
   prompt: string;
   demoUrl?: string;
+  localUrl?: string;
   chatId?: string;
   createdAt: number;
   updatedAt?: number;
   status?: "active" | "error" | "completed";
   screenshotStorageId?: Id<"_storage">;
+  deploymentStatus?:
+    | "pending"
+    | "syncing"
+    | "deploying"
+    | "deployed"
+    | "failed";
+  deploymentError?: string;
 };
 
 function ProjectCard({ project }: { project: ProjectWithDemos }) {
@@ -41,9 +49,9 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
             alt={`Preview of ${project.prompt}`}
             className="w-full h-full object-cover"
           />
-        ) : project.demoUrl ? (
+        ) : project.localUrl || project.demoUrl ? (
           <iframe
-            src={project.demoUrl}
+            src={project.localUrl || project.demoUrl}
             className="w-full h-full border-0 pointer-events-none"
             sandbox="allow-same-origin"
             loading="lazy"
@@ -59,18 +67,38 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
       <div className="p-4 space-y-3">
         {/* Status Badge */}
         <div className="flex items-center justify-between">
-          <Badge
-            variant={
-              project.status === "completed"
-                ? "default"
-                : project.status === "error"
-                  ? "destructive"
-                  : "secondary"
-            }
-            className="text-xs"
-          >
-            {project.status || "active"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={
+                project.status === "completed"
+                  ? "default"
+                  : project.status === "error"
+                    ? "destructive"
+                    : "secondary"
+              }
+              className="text-xs"
+            >
+              {project.status || "active"}
+            </Badge>
+            {project.deploymentStatus && (
+              <Badge
+                variant={
+                  project.deploymentStatus === "deployed"
+                    ? "default"
+                    : project.deploymentStatus === "failed"
+                      ? "destructive"
+                      : "secondary"
+                }
+                className="text-xs"
+              >
+                {project.deploymentStatus === "syncing" && "🔄 Syncing"}
+                {project.deploymentStatus === "deploying" && "🚀 Deploying"}
+                {project.deploymentStatus === "deployed" && "✅ Live"}
+                {project.deploymentStatus === "failed" && "❌ Failed"}
+                {project.deploymentStatus === "pending" && "⏳ Pending"}
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center text-xs text-muted-foreground">
             <Calendar className="h-3 w-3 mr-1" />
             {formatTimeAgo(project.createdAt)}
@@ -89,19 +117,56 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {project.demoUrl && (
-            <Button size="sm" variant="outline" className="flex-1" asChild>
+          {/* Primary action - prefer local URL if deployed, otherwise demo URL */}
+          {(project.localUrl || project.demoUrl) && (
+            <Button
+              size="sm"
+              variant={
+                project.deploymentStatus === "deployed" ? "default" : "outline"
+              }
+              className="flex-1"
+              asChild
+            >
               <a
-                href={project.demoUrl}
+                href={
+                  project.deploymentStatus === "deployed" && project.localUrl
+                    ? project.localUrl
+                    : project.demoUrl
+                }
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                View Site
+                {project.deploymentStatus === "deployed"
+                  ? "View Live Site"
+                  : "View Demo"}
               </a>
             </Button>
           )}
+
+          {/* Secondary action - show demo URL if we have a deployed local URL */}
+          {project.deploymentStatus === "deployed" &&
+            project.localUrl &&
+            project.demoUrl && (
+              <Button size="sm" variant="ghost" className="flex-1" asChild>
+                <a
+                  href={project.demoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Demo
+                </a>
+              </Button>
+            )}
         </div>
+
+        {/* Deployment Error */}
+        {project.deploymentStatus === "failed" && project.deploymentError && (
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+            <strong>Deployment failed:</strong> {project.deploymentError}
+          </div>
+        )}
       </div>
     </Card>
   );
