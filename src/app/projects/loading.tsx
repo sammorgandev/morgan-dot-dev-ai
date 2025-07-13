@@ -1,44 +1,14 @@
-import { ThemeToggle } from "@/components/default-view/theme-toggle";
-import Link from "next/link";
 import {
   ProjectSkeletonGrid,
   ProjectSkeletonSmallGrid,
 } from "@/components/loading/project-skeleton";
 import { Star, Code } from "lucide-react";
+import Header from "@/components/Header";
 
 export default function ProjectsLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      {/* Header */}
-      <header className="flex justify-between w-full top-0 right-0 p-6">
-        <div className="text-md font-semibold flex gap-4">
-          <Link
-            href="/"
-            className="hover:scale-105 transition-all duration-200"
-          >
-            Home
-          </Link>
-          <Link
-            href="/resume"
-            className="hover:scale-105 transition-all duration-200"
-          >
-            Resume
-          </Link>
-          <Link
-            href="/projects"
-            className="hover:scale-105 transition-all duration-200 text-primary"
-          >
-            Projects
-          </Link>
-          <Link
-            href="/blog"
-            className="hover:scale-105 transition-all duration-200"
-          >
-            Blog
-          </Link>
-        </div>
-        <ThemeToggle />
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-6">

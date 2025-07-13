@@ -11,6 +11,10 @@ import { DESIGN_KEYWORDS, PUBLIC_IMAGE_URL } from "@/lib/constants";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import {
+  captureScreenshotWithRetry,
+  uploadScreenshotToConvex,
+} from "@/lib/screenshot";
 
 // Validate the user's prompt
 function validatePrompt(prompt: string): { isValid: boolean; error?: string } {
@@ -160,6 +164,32 @@ Feel free to be creative with the layout, styling, animations, and overall desig
       })),
     });
 
+    // Capture screenshot asynchronously (don't wait for it to complete)
+    if (chat.demo) {
+      captureScreenshotWithRetry(chat.demo, {
+        width: 1200,
+        height: 800,
+        timeout: 30000,
+        delay: 3000,
+      })
+        .then(async (screenshotBlob) => {
+          // Upload screenshot to Convex storage
+          await uploadScreenshotToConvex(
+            screenshotBlob,
+            projectId,
+            process.env.NEXT_PUBLIC_CONVEX_URL!
+          );
+          console.log(
+            "Screenshot captured successfully for project:",
+            projectId
+          );
+        })
+        .catch((error) => {
+          console.error("Failed to capture screenshot:", error);
+          // Don't fail the main request if screenshot fails
+        });
+    }
+
     // Return structured response with demo property and projectId
     return {
       success: true,
@@ -271,6 +301,32 @@ export async function continueChat(
       status: "active",
       demoUrl: chat.demo,
     });
+
+    // Capture screenshot asynchronously (don't wait for it to complete)
+    if (chat.demo) {
+      captureScreenshotWithRetry(chat.demo, {
+        width: 1200,
+        height: 800,
+        timeout: 30000,
+        delay: 3000,
+      })
+        .then(async (screenshotBlob) => {
+          // Upload screenshot to Convex storage
+          await uploadScreenshotToConvex(
+            screenshotBlob,
+            projectId as Id<"projects">,
+            process.env.NEXT_PUBLIC_CONVEX_URL!
+          );
+          console.log(
+            "Screenshot updated successfully for project:",
+            projectId
+          );
+        })
+        .catch((error) => {
+          console.error("Failed to update screenshot:", error);
+          // Don't fail the main request if screenshot fails
+        });
+    }
 
     // Return structured response
     return {

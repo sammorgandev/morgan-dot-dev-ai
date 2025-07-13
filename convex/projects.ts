@@ -276,6 +276,7 @@ export const getRecentProjects = query({
       status: v.optional(
         v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
       ),
+      screenshotStorageId: v.optional(v.id("_storage")),
       errorHistory: v.optional(
         v.array(
           v.object({
@@ -319,6 +320,7 @@ export const getProject = query({
       status: v.optional(
         v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
       ),
+      screenshotStorageId: v.optional(v.id("_storage")),
       errorHistory: v.optional(
         v.array(
           v.object({
@@ -409,6 +411,7 @@ export const getProjectWithFiles = query({
             v.literal("completed")
           )
         ),
+        screenshotStorageId: v.optional(v.id("_storage")),
         errorHistory: v.optional(
           v.array(
             v.object({
@@ -484,6 +487,7 @@ export const getFullProjectData = query({
             v.literal("completed")
           )
         ),
+        screenshotStorageId: v.optional(v.id("_storage")),
         errorHistory: v.optional(
           v.array(
             v.object({
@@ -586,5 +590,76 @@ export const getFullProjectData = query({
       messages,
       chatSession: chatSession || undefined,
     };
+  },
+});
+
+// Query to get all projects with demos for variations page
+export const getProjectsWithDemos = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("projects"),
+      _creationTime: v.number(),
+      prompt: v.string(),
+      demoUrl: v.optional(v.string()),
+      chatId: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+      status: v.optional(
+        v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
+      ),
+      screenshotStorageId: v.optional(v.id("_storage")),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 20;
+    return await ctx.db
+      .query("projects")
+      .withIndex("by_created_at")
+      .order("desc")
+      .filter((q) => q.neq(q.field("demoUrl"), undefined))
+      .take(limit);
+  },
+});
+
+// Mutation to update project screenshot
+export const updateProjectScreenshot = mutation({
+  args: {
+    projectId: v.id("projects"),
+    screenshotStorageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      screenshotStorageId: args.screenshotStorageId,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Mutation to generate upload URL for screenshots
+export const generateScreenshotUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Query to get screenshot URL for a project
+export const getScreenshotUrl = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project?.screenshotStorageId) {
+      return null;
+    }
+
+    return await ctx.storage.getUrl(project.screenshotStorageId);
   },
 });

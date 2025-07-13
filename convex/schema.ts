@@ -12,6 +12,7 @@ export default defineSchema({
     status: v.optional(
       v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
     ),
+    screenshotStorageId: v.optional(v.id("_storage")), // Convex file storage ID for screenshot
     errorHistory: v.optional(
       v.array(
         v.object({

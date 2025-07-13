@@ -303,3 +303,110 @@ export const clearAllData = mutation({
     };
   },
 });
+
+// Seed variations data (v0 platform projects with demos)
+export const seedVariations = mutation({
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    const variations = [
+      {
+        prompt:
+          "Create a modern landing page for a SaaS product with pricing tiers, testimonials, and a clean design using Tailwind CSS",
+        demoUrl: "https://v0.dev/r/abc123",
+        chatId: "chat_saas_landing",
+        createdAt: now - 3600000, // 1 hour ago
+        updatedAt: now - 3600000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Build a dashboard for an analytics platform with charts, user management, and a sidebar navigation",
+        demoUrl: "https://v0.dev/r/def456",
+        chatId: "chat_analytics_dashboard",
+        createdAt: now - 7200000, // 2 hours ago
+        updatedAt: now - 7200000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Design a blog homepage with featured posts, categories, and a search functionality",
+        demoUrl: "https://v0.dev/r/ghi789",
+        chatId: "chat_blog_homepage",
+        createdAt: now - 14400000, // 4 hours ago
+        updatedAt: now - 14400000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Create an e-commerce product page with image gallery, reviews, and add to cart functionality",
+        demoUrl: "https://v0.dev/r/jkl012",
+        chatId: "chat_ecommerce_product",
+        createdAt: now - 86400000, // 1 day ago
+        updatedAt: now - 86400000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Build a project management kanban board with drag and drop functionality",
+        demoUrl: "https://v0.dev/r/mno345",
+        chatId: "chat_kanban_board",
+        createdAt: now - 172800000, // 2 days ago
+        updatedAt: now - 172800000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Design a restaurant menu website with sections for different meal types and online ordering",
+        demoUrl: "https://v0.dev/r/pqr678",
+        chatId: "chat_restaurant_menu",
+        createdAt: now - 259200000, // 3 days ago
+        updatedAt: now - 259200000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Create a portfolio website for a photographer with image galleries and contact form",
+        demoUrl: "https://v0.dev/r/stu901",
+        chatId: "chat_photographer_portfolio",
+        createdAt: now - 345600000, // 4 days ago
+        updatedAt: now - 345600000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Build a real estate listing page with property details, image carousel, and mortgage calculator",
+        demoUrl: "https://v0.dev/r/vwx234",
+        chatId: "chat_real_estate_listing",
+        createdAt: now - 432000000, // 5 days ago
+        updatedAt: now - 432000000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Design a fitness tracking dashboard with workout logs, progress charts, and goal setting",
+        demoUrl: "https://v0.dev/r/yza567",
+        chatId: "chat_fitness_dashboard",
+        createdAt: now - 518400000, // 6 days ago
+        updatedAt: now - 518400000,
+        status: "completed" as const,
+      },
+      {
+        prompt:
+          "Create a news website homepage with breaking news, categories, and trending stories",
+        demoUrl: "https://v0.dev/r/bcd890",
+        chatId: "chat_news_homepage",
+        createdAt: now - 604800000, // 7 days ago
+        updatedAt: now - 604800000,
+        status: "completed" as const,
+      },
+    ];
+
+    // Insert variations
+    for (const variation of variations) {
+      await ctx.db.insert("projects", variation);
+    }
+
+    return { success: true, variationsCreated: variations.length };
+  },
+});

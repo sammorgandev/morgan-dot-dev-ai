@@ -19,6 +19,10 @@ export async function preloadProject(id: Id<"portfolioProjects">) {
   return await preloadQuery(api.portfolioProjects.getById, { id });
 }
 
+export async function preloadVariationsData() {
+  return await preloadQuery(api.projects.getProjectsWithDemos, {});
+}
+
 // Parallel data loading for pages that need both blog and portfolio data
 export async function preloadHomepageData() {
   const [blogData, portfolioData] = await Promise.all([

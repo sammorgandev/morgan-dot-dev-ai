@@ -2,7 +2,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Github, ExternalLink, Calendar, ArrowLeft, Star } from "lucide-react";
 import Link from "next/link";
-import { getProjectById } from "@/lib/data";
+import { preloadProject } from "@/lib/data-loading";
+import { preloadedQueryResult } from "convex/nextjs";
 import { notFound } from "next/navigation";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { getStatusColor, getStatusIcon } from "@/components/projects/utils";
@@ -10,15 +11,17 @@ import Header from "@/components/Header";
 import Image from "next/image";
 
 interface ProjectDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function ProjectDetailPage({
   params,
 }: ProjectDetailPageProps) {
-  const project = await getProjectById(params.id as Id<"portfolioProjects">);
+  const { id } = await params;
+  const preloadedProject = await preloadProject(id as Id<"portfolioProjects">);
+  const project = preloadedQueryResult(preloadedProject);
 
   if (!project) {
     notFound();
