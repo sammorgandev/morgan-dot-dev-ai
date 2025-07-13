@@ -10,6 +10,21 @@ import { Id } from "../../../../convex/_generated/dataModel";
 // Initialize Convex client
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+// Type for project data structure
+interface ProjectData {
+  project?: {
+    prompt?: string;
+    demoUrl?: string;
+    deploymentStatus?: string;
+    deploymentError?: string;
+  };
+  files?: Array<{
+    filename: string;
+    content: string;
+    language: string;
+  }>;
+}
+
 export default function GeneratedSitePage() {
   return (
     <ConvexProvider client={convex}>
@@ -35,21 +50,28 @@ function GeneratedSiteContent() {
   useEffect(() => {
     async function loadFilesystemComponent() {
       try {
-        // Try to dynamically import the filesystem-based component
-        const componentModule = await import(
-          `../../../../generated/${projectId}/page`
-        );
-        setFilesystemComponent(() => componentModule.default);
+        // Only try to import if we know the project is deployed
+        if (
+          projectData?.project?.deploymentStatus === "deployed" &&
+          projectData?.project?.localUrl
+        ) {
+          const componentModule = await import(
+            `../../../../generated/${projectId}/page`
+          );
+          setFilesystemComponent(() => componentModule.default);
+        } else {
+          setFilesystemComponent(null);
+        }
       } catch {
         console.log("Filesystem component not found, using database fallback");
         setFilesystemComponent(null);
       }
     }
 
-    if (projectId) {
+    if (projectId && projectData) {
       loadFilesystemComponent();
     }
-  }, [projectId]);
+  }, [projectId, projectData]);
 
   // Update deployment status when project data changes
   useEffect(() => {
@@ -140,7 +162,7 @@ function DeploymentInProgressState({
   );
 }
 
-function DeploymentFailedState({ projectData }: { projectData: any }) {
+function DeploymentFailedState({ projectData }: { projectData: ProjectData }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center max-w-2xl mx-auto p-8">
@@ -192,7 +214,7 @@ function ErrorState({
   projectData,
 }: {
   error: string | null;
-  projectData: any;
+  projectData: ProjectData;
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -218,7 +240,7 @@ function ErrorState({
   );
 }
 
-function TransitionState({ projectData }: { projectData: any }) {
+function TransitionState({ projectData }: { projectData: ProjectData }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center max-w-2xl mx-auto p-8">
