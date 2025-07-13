@@ -17,18 +17,19 @@ type ProjectWithDemos = {
   _creationTime: number;
   prompt: string;
   demoUrl?: string;
-  localUrl?: string;
   chatId?: string;
   createdAt: number;
   updatedAt?: number;
   status?: "active" | "error" | "completed";
   screenshotStorageId?: Id<"_storage">;
+  isPublished?: boolean;
   deploymentStatus?:
     | "pending"
-    | "syncing"
-    | "deploying"
-    | "deployed"
-    | "failed";
+    | "building"
+    | "ready"
+    | "error"
+    | "canceled";
+  deploymentUrl?: string;
   deploymentError?: string;
 };
 
@@ -49,9 +50,9 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
             alt={`Preview of ${project.prompt}`}
             className="w-full h-full object-cover"
           />
-        ) : project.localUrl || project.demoUrl ? (
+        ) : project.demoUrl ? (
           <iframe
-            src={project.localUrl || project.demoUrl}
+            src={project.demoUrl}
             className="w-full h-full border-0 pointer-events-none"
             sandbox="allow-same-origin"
             loading="lazy"
@@ -83,19 +84,19 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
             {project.deploymentStatus && (
               <Badge
                 variant={
-                  project.deploymentStatus === "deployed"
+                  project.deploymentStatus === "ready"
                     ? "default"
-                    : project.deploymentStatus === "failed"
+                    : project.deploymentStatus === "error"
                       ? "destructive"
                       : "secondary"
                 }
                 className="text-xs"
               >
-                {project.deploymentStatus === "syncing" && "🔄 Syncing"}
-                {project.deploymentStatus === "deploying" && "🚀 Deploying"}
-                {project.deploymentStatus === "deployed" && "✅ Live"}
-                {project.deploymentStatus === "failed" && "❌ Failed"}
+                {project.deploymentStatus === "building" && "🔄 Building"}
+                {project.deploymentStatus === "ready" && "✅ Live"}
+                {project.deploymentStatus === "error" && "❌ Failed"}
                 {project.deploymentStatus === "pending" && "⏳ Pending"}
+                {project.deploymentStatus === "canceled" && "⏹️ Canceled"}
               </Badge>
             )}
           </div>
@@ -117,36 +118,36 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          {/* Primary action - prefer local URL if deployed, otherwise demo URL */}
-          {(project.localUrl || project.demoUrl) && (
+          {/* Primary action - prefer deployment URL if deployed, otherwise demo URL */}
+          {(project.deploymentUrl || project.demoUrl) && (
             <Button
               size="sm"
               variant={
-                project.deploymentStatus === "deployed" ? "default" : "outline"
+                project.deploymentStatus === "ready" ? "default" : "outline"
               }
               className="flex-1"
               asChild
             >
               <a
                 href={
-                  project.deploymentStatus === "deployed" && project.localUrl
-                    ? project.localUrl
+                  project.deploymentStatus === "ready" && project.deploymentUrl
+                    ? project.deploymentUrl
                     : project.demoUrl
                 }
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                {project.deploymentStatus === "deployed"
+                {project.deploymentStatus === "ready"
                   ? "View Live Site"
                   : "View Demo"}
               </a>
             </Button>
           )}
 
-          {/* Secondary action - show demo URL if we have a deployed local URL */}
-          {project.deploymentStatus === "deployed" &&
-            project.localUrl &&
+          {/* Secondary action - show demo URL if we have a deployed site */}
+          {project.deploymentStatus === "ready" &&
+            project.deploymentUrl &&
             project.demoUrl && (
               <Button size="sm" variant="ghost" className="flex-1" asChild>
                 <a
@@ -162,7 +163,7 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
         </div>
 
         {/* Deployment Error */}
-        {project.deploymentStatus === "failed" && project.deploymentError && (
+        {project.deploymentStatus === "error" && project.deploymentError && (
           <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
             <strong>Deployment failed:</strong> {project.deploymentError}
           </div>
@@ -188,17 +189,21 @@ function formatTimeAgo(timestamp: number): string {
 export function VariationsPageContent({
   preloadedVariationsData,
 }: VariationsPageContentProps) {
-  const projects = usePreloadedQuery(preloadedVariationsData);
+  const allProjects = usePreloadedQuery(preloadedVariationsData);
+  
+  // Filter to only show published projects with completed deployments
+  const publishedProjects = allProjects.filter(
+    (project) => project.isPublished && project.deploymentStatus === "ready"
+  );
 
-  if (projects.length === 0) {
+  if (publishedProjects.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="text-muted-foreground">
           <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">No generated sites found yet.</p>
+          <p className="text-lg">No published sites found yet.</p>
           <p className="text-sm">
-            Sites will appear here once they&apos;re generated with the v0
-            platform.
+            Sites will appear here once they&apos;re published and deployed successfully.
           </p>
         </div>
       </div>
@@ -207,7 +212,7 @@ export function VariationsPageContent({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {projects.map((project) => (
+      {publishedProjects.map((project) => (
         <ProjectCard key={project._id} project={project} />
       ))}
     </div>

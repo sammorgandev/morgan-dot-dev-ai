@@ -58,16 +58,23 @@ export const updateProjectStatus = mutation({
   },
 });
 
-// Mutation to update project local URL
-export const updateProjectLocalUrl = mutation({
+// Mutation to publish a project (trigger deployment)
+export const publishProject = mutation({
   args: {
     projectId: v.id("projects"),
-    localUrl: v.string(),
+    v0DeploymentId: v.optional(v.string()),
+    vercelDeploymentId: v.optional(v.string()),
+    deploymentUrl: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
-      localUrl: args.localUrl,
+      isPublished: true,
+      v0DeploymentId: args.v0DeploymentId,
+      vercelDeploymentId: args.vercelDeploymentId,
+      deploymentUrl: args.deploymentUrl,
+      deploymentStatus: "pending",
+      deploymentStartedAt: Date.now(),
       updatedAt: Date.now(),
     });
   },
@@ -115,7 +122,7 @@ export const startDeployment = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "syncing",
+      deploymentStatus: "building",
       deploymentStartedAt: now,
       deploymentCompletedAt: undefined,
       deploymentError: undefined,
@@ -130,12 +137,12 @@ export const updateDeploymentStatus = mutation({
     projectId: v.id("projects"),
     status: v.union(
       v.literal("pending"),
-      v.literal("syncing"),
-      v.literal("deploying"),
-      v.literal("deployed"),
-      v.literal("failed")
+      v.literal("building"),
+      v.literal("ready"),
+      v.literal("error"),
+      v.literal("canceled")
     ),
-    commitSha: v.optional(v.string()),
+    deploymentUrl: v.optional(v.string()),
     error: v.optional(v.string()),
   },
   returns: v.null(),
@@ -144,12 +151,12 @@ export const updateDeploymentStatus = mutation({
     const updateData: {
       deploymentStatus:
         | "pending"
-        | "syncing"
-        | "deploying"
-        | "deployed"
-        | "failed";
+        | "building"
+        | "ready"
+        | "error"
+        | "canceled";
       updatedAt: number;
-      githubCommitSha?: string;
+      deploymentUrl?: string;
       deploymentError?: string;
       deploymentCompletedAt?: number;
     } = {
@@ -157,15 +164,15 @@ export const updateDeploymentStatus = mutation({
       updatedAt: now,
     };
 
-    if (args.commitSha) {
-      updateData.githubCommitSha = args.commitSha;
+    if (args.deploymentUrl) {
+      updateData.deploymentUrl = args.deploymentUrl;
     }
 
     if (args.error) {
       updateData.deploymentError = args.error;
     }
 
-    if (args.status === "deployed") {
+    if (args.status === "ready") {
       updateData.deploymentCompletedAt = now;
     }
 
@@ -177,18 +184,18 @@ export const updateDeploymentStatus = mutation({
 export const completeDeployment = mutation({
   args: {
     projectId: v.id("projects"),
-    localUrl: v.string(),
-    commitSha: v.optional(v.string()),
+    deploymentUrl: v.string(),
+    vercelDeploymentId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "deployed",
-      localUrl: args.localUrl,
+      deploymentStatus: "ready",
+      deploymentUrl: args.deploymentUrl,
       deploymentCompletedAt: now,
       deploymentError: undefined,
-      ...(args.commitSha && { githubCommitSha: args.commitSha }),
+      ...(args.vercelDeploymentId && { vercelDeploymentId: args.vercelDeploymentId }),
       updatedAt: now,
     });
   },
@@ -204,7 +211,7 @@ export const failDeployment = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "failed",
+      deploymentStatus: "error",
       deploymentError: args.error,
       deploymentCompletedAt: now,
       updatedAt: now,

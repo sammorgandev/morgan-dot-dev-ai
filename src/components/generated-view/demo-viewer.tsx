@@ -5,6 +5,7 @@ import { DemoControls } from "./demo-controls";
 import { IframeRenderer } from "./iframe-renderer";
 import { useUnifiedActions } from "@/hooks/useUnifiedActions";
 import { handleErrorRecovery, continueChat } from "@/app/actions";
+import { publishProject } from "@/app/publish-actions";
 import { ChatMessage } from "@/lib/types";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -43,20 +44,14 @@ export function DemoViewer() {
       : "skip"
   );
 
-  // Determine the best URL to use based on deployment status
-  const effectiveUrl = (() => {
-    if (projectData?.deploymentStatus === "deployed" && projectData?.localUrl) {
-      return projectData.localUrl;
-    }
-    return demoUrl;
-  })();
+  // Always use the demoUrl for rendering (simplified approach)
+  const effectiveUrl = demoUrl;
 
   // Check deployment status
-  const isDeployed = projectData?.deploymentStatus === "deployed";
-  const isDeploying =
-    projectData?.deploymentStatus === "syncing" ||
-    projectData?.deploymentStatus === "deploying";
-  const deploymentFailed = projectData?.deploymentStatus === "failed";
+  const isPublished = projectData?.isPublished;
+  const isDeployed = projectData?.deploymentStatus === "ready";
+  const isDeploying = projectData?.deploymentStatus === "building";
+  const deploymentFailed = projectData?.deploymentStatus === "error";
 
   // Handle automatic error recovery
   const handleAutoRecovery = async () => {
@@ -85,6 +80,33 @@ export function DemoViewer() {
       },
       onError: (error) => {
         console.error("Error recovery failed:", error);
+      },
+    });
+  };
+
+  // Handle project publishing
+  const handlePublish = async () => {
+    if (!currentProjectId || !chat.currentChatId) {
+      return;
+    }
+
+    await executeAction({
+      id: "publish-project",
+      execute: async () => {
+        const formData = new FormData();
+        formData.append("projectId", currentProjectId);
+        formData.append("chatId", chat.currentChatId!);
+
+        return await publishProject({}, formData);
+      },
+      onSuccess: (result: unknown) => {
+        const typedResult = result as { success?: boolean; data?: { deploymentUrl?: string } };
+        if (typedResult?.success) {
+          console.log("Project published successfully:", typedResult.data);
+        }
+      },
+      onError: (error) => {
+        console.error("Failed to publish project:", error);
       },
     });
   };
@@ -159,6 +181,11 @@ export function DemoViewer() {
       <DemoControls
         onFollowUpSubmit={handleFollowUpSubmit}
         isProcessing={isActionProcessing("continue-chat")}
+        onPublish={handlePublish}
+        isPublished={isPublished}
+        isDeployed={isDeployed}
+        deploymentUrl={projectData?.deploymentUrl}
+        isDeploying={isDeploying}
       />
 
       {/* Content Area - Demo Iframe or File Viewer */}
