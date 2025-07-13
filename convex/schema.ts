@@ -28,17 +28,20 @@ export default defineSchema({
         })
       )
     ),
-    // Deployment tracking fields
+    // Deployment tracking fields - simplified for v0 Platform API
+    isPublished: v.optional(v.boolean()), // Whether user has clicked "publish"
+    v0DeploymentId: v.optional(v.string()), // v0 Platform API deployment ID
+    vercelDeploymentId: v.optional(v.string()), // Vercel deployment ID
     deploymentStatus: v.optional(
       v.union(
         v.literal("pending"),
-        v.literal("syncing"),
-        v.literal("deploying"),
-        v.literal("deployed"),
-        v.literal("failed")
+        v.literal("building"),
+        v.literal("ready"),
+        v.literal("error"),
+        v.literal("canceled")
       )
     ),
-    githubCommitSha: v.optional(v.string()),
+    deploymentUrl: v.optional(v.string()), // Final deployment URL
     deploymentStartedAt: v.optional(v.number()),
     deploymentCompletedAt: v.optional(v.number()),
     deploymentError: v.optional(v.string()),
