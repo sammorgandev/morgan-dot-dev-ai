@@ -2,13 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ConvexProvider, useQuery } from "convex/react";
-import { ConvexReactClient } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-
-// Initialize Convex client
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 // Type for project data structure
 interface ProjectData {
@@ -26,11 +22,7 @@ interface ProjectData {
 }
 
 export default function GeneratedSitePage() {
-  return (
-    <ConvexProvider client={convex}>
-      <GeneratedSiteContent />
-    </ConvexProvider>
-  );
+  return <GeneratedSiteContent />;
 }
 
 function GeneratedSiteContent() {
@@ -48,29 +40,9 @@ function GeneratedSiteContent() {
     useState<React.ComponentType | null>(null);
 
   useEffect(() => {
-    async function loadFilesystemComponent() {
-      try {
-        // Only try to import if we know the project is deployed
-        if (
-          projectData?.project?.deploymentStatus === "deployed" &&
-          projectData?.project?.localUrl
-        ) {
-          const componentModule = await import(
-            `../../../../generated/${projectId}/page`
-          );
-          setFilesystemComponent(() => componentModule.default);
-        } else {
-          setFilesystemComponent(null);
-        }
-      } catch {
-        console.log("Filesystem component not found, using database fallback");
-        setFilesystemComponent(null);
-      }
-    }
-
-    if (projectId && projectData) {
-      loadFilesystemComponent();
-    }
+    // For now, disable filesystem component loading to prevent build issues
+    // This will be re-enabled once GitHub sync is working and files exist
+    setFilesystemComponent(null);
   }, [projectId, projectData]);
 
   // Update deployment status when project data changes
