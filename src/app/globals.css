@@ -1,6 +1,51 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Performance optimizations */
+@layer base {
+  /* Improve font loading performance */
+  @font-face {
+    font-family: "GeistVF";
+    src: url("./fonts/GeistVF.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 100 900;
+    font-style: normal;
+  }
+  
+  /* Optimize scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Improve text rendering */
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Optimize image loading */
+  img {
+    height: auto;
+    max-width: 100%;
+  }
+  
+  /* Better focus management */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
