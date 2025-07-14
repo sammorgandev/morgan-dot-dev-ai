@@ -103,7 +103,7 @@ export function ProjectCard({
         {/* Technologies */}
         <TagsList
           tags={project.technologies}
-          maxVisible={isCompact ? 4 : undefined}
+          maxVisible={isCompact ? 4 : 0}
           variant="secondary"
           size={isCompact ? "sm" : "default"}
         />

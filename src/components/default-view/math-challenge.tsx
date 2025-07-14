@@ -25,9 +25,9 @@ export function MathChallenge() {
   const generateProblem = (): MathProblem => {
     const operations = ["+", "-", "×"];
     const operation = operations[Math.floor(Math.random() * operations.length)];
-    
+
     let num1: number, num2: number, answer: number;
-    
+
     switch (operation) {
       case "+":
         num1 = Math.floor(Math.random() * 50) + 1;
@@ -49,7 +49,7 @@ export function MathChallenge() {
         num2 = 1;
         answer = 2;
     }
-    
+
     return { num1, num2, operation, answer };
   };
 
@@ -65,7 +65,7 @@ export function MathChallenge() {
 
   const checkAnswer = useCallback(() => {
     if (!problem || !userAnswer) return;
-    
+
     const answer = parseInt(userAnswer);
     if (answer === problem.answer) {
       setScore(score + 1);
@@ -74,9 +74,11 @@ export function MathChallenge() {
       setTimeLeft(timeLeft + 2); // Bonus time
     } else {
       setStreak(0);
-      setFeedback(`✗ Wrong! ${problem.num1} ${problem.operation} ${problem.num2} = ${problem.answer}`);
+      setFeedback(
+        `✗ Wrong! ${problem.num1} ${problem.operation} ${problem.num2} = ${problem.answer}`
+      );
     }
-    
+
     setUserAnswer("");
     setTimeout(() => {
       setFeedback("");
@@ -92,8 +94,8 @@ export function MathChallenge() {
 
   // Timer effect
   useEffect(() => {
-    let interval: number;
-    
+    let interval: NodeJS.Timeout;
+
     if (isPlaying && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(timeLeft - 1);
@@ -102,7 +104,7 @@ export function MathChallenge() {
       setIsPlaying(false);
       setGameOver(true);
     }
-    
+
     return () => clearInterval(interval);
   }, [isPlaying, timeLeft]);
 
@@ -124,7 +126,9 @@ export function MathChallenge() {
             <p className="text-sm text-muted-foreground">Streak: {streak}</p>
           </div>
           <div className="text-center">
-            <p className={`text-lg font-semibold ${timeLeft <= 10 ? "text-red-500" : ""}`}>
+            <p
+              className={`text-lg font-semibold ${timeLeft <= 10 ? "text-red-500" : ""}`}
+            >
               Time: {timeLeft}s
             </p>
           </div>
@@ -138,7 +142,7 @@ export function MathChallenge() {
                 {problem.num1} {problem.operation} {problem.num2} = ?
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Input
                 type="number"
@@ -149,8 +153,8 @@ export function MathChallenge() {
                 className="text-center text-lg"
                 autoFocus
               />
-              <Button 
-                onClick={checkAnswer} 
+              <Button
+                onClick={checkAnswer}
                 className="w-full"
                 disabled={!userAnswer}
               >
@@ -163,7 +167,9 @@ export function MathChallenge() {
         {/* Feedback */}
         {feedback && (
           <div className="text-center">
-            <p className={`text-lg font-semibold ${feedback.includes("✓") ? "text-green-600" : "text-red-600"}`}>
+            <p
+              className={`text-lg font-semibold ${feedback.includes("✓") ? "text-green-600" : "text-red-600"}`}
+            >
               {feedback}
             </p>
           </div>
@@ -172,7 +178,7 @@ export function MathChallenge() {
         {/* Game Over */}
         {gameOver && (
           <div className="text-center space-y-2">
-            <p className="text-lg font-semibold">⏰ Time's Up!</p>
+            <p className="text-lg font-semibold">⏰ Time&apos;s Up!</p>
             <p className="text-sm text-muted-foreground">
               Final Score: {score} problems solved
             </p>
