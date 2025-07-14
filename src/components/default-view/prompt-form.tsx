@@ -20,6 +20,7 @@ export function PromptForm() {
     setDemoUrl,
     setCurrentProjectId,
     showDemo,
+    initializeChat,
   } = useAppStore();
   const [state, formAction, isPending] = useActionState(sendMessage, null);
   const animatedPlaceholder = useAnimatedPlaceholder();
@@ -27,13 +28,26 @@ export function PromptForm() {
   // Handle successful generation (moved to useEffect to avoid setState in render)
   useEffect(() => {
     if (state?.success && state.data?.demo) {
+      console.log("🎉 Site generation successful, initializing state:", {
+        chatId: state.data.id,
+        projectId: state.data.projectId,
+        messagesCount: state.data.messages?.length || 0,
+      });
+
       setShowDemo(true);
       setDemoUrl(state.data.demo);
+
       if (state.data.projectId) {
         setCurrentProjectId(state.data.projectId);
       }
+
+      // Initialize chat state with the chatId and messages
+      if (state.data.id) {
+        initializeChat(state.data.id, state.data.messages || []);
+        console.log("✅ Chat initialized with chatId:", state.data.id);
+      }
     }
-  }, [state, setShowDemo, setDemoUrl, setCurrentProjectId]);
+  }, [state, setShowDemo, setDemoUrl, setCurrentProjectId, initializeChat]);
 
   // Show loading view while pending
   if (isPending) {

@@ -35,10 +35,10 @@ export default defineSchema({
     deploymentStatus: v.optional(
       v.union(
         v.literal("pending"),
-        v.literal("building"),
-        v.literal("ready"),
-        v.literal("error"),
-        v.literal("canceled")
+        v.literal("syncing"),
+        v.literal("deploying"),
+        v.literal("deployed"),
+        v.literal("failed")
       )
     ),
     deploymentUrl: v.optional(v.string()), // Final deployment URL

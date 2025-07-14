@@ -15,6 +15,9 @@ export const IframeRenderer = memo(
   ({ url, onErrorRecovery, isRecovering }: IframeRendererProps) => {
     const { currentProjectId, toggleView } = useAppStore();
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const errorDetectionRef = useRef<NodeJS.Timeout | null>(null);
+    const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoRecoveryTriggeredRef = useRef(false);
 
     const {
       isLoaded,
@@ -28,9 +31,12 @@ export const IframeRenderer = memo(
       forceLoad,
     } = useIframeState(url);
 
-    // Enhanced error detection for cross-origin iframes
+    // Enhanced error detection with more aggressive monitoring
     const checkForCommonErrors = useCallback(() => {
       if (!url) return;
+
+      // Reset auto-recovery flag for new URL
+      autoRecoveryTriggeredRef.current = false;
 
       // Monitor console errors (works even for cross-origin)
       const originalConsoleError = console.error;
@@ -40,7 +46,7 @@ export const IframeRenderer = memo(
       console.error = (...args) => {
         const errorMessage = args.join(" ");
 
-        // Detect common v0 site errors
+        // Detect common v0 site errors - more comprehensive list
         if (
           errorMessage.includes("CORS") ||
           errorMessage.includes("Access-Control-Allow-Origin") ||
@@ -49,7 +55,18 @@ export const IframeRenderer = memo(
           errorMessage.includes("esm.v0.dev") ||
           errorMessage.includes("FatalRendererError") ||
           errorMessage.includes("Unsupported Content-Type") ||
-          errorMessage.includes("Modules must be served with a valid MIME type")
+          errorMessage.includes(
+            "Modules must be served with a valid MIME type"
+          ) ||
+          errorMessage.includes("net::ERR_") ||
+          errorMessage.includes("ChunkLoadError") ||
+          errorMessage.includes("Loading chunk") ||
+          errorMessage.includes("SyntaxError") ||
+          errorMessage.includes("ReferenceError") ||
+          errorMessage.includes("TypeError") ||
+          errorMessage.includes("Module not found") ||
+          errorMessage.includes("Cannot resolve module") ||
+          errorMessage.includes("Unexpected token")
         ) {
           errorBuffer.push(errorMessage);
 
@@ -58,7 +75,7 @@ export const IframeRenderer = memo(
             clearTimeout(errorTimeout);
           }
 
-          // Set a short delay to collect multiple related errors
+          // Set a shorter delay to trigger recovery faster
           errorTimeout = setTimeout(() => {
             const combinedError = errorBuffer.join("\n");
             handleError({
@@ -68,39 +85,56 @@ export const IframeRenderer = memo(
               timestamp: new Date(),
             });
 
-            // Auto-trigger error recovery for critical errors
+            // Auto-trigger error recovery for critical errors - be more aggressive
             if (
-              combinedError.includes("FatalRendererError") ||
-              combinedError.includes("Failed to load global configs") ||
-              (combinedError.includes("CORS") &&
-                combinedError.includes("fonts.googleapis.com"))
+              !autoRecoveryTriggeredRef.current &&
+              (combinedError.includes("FatalRendererError") ||
+                combinedError.includes("Failed to load global configs") ||
+                combinedError.includes("ChunkLoadError") ||
+                combinedError.includes("Loading chunk") ||
+                combinedError.includes("Module not found") ||
+                combinedError.includes("Cannot resolve module") ||
+                combinedError.includes("net::ERR_") ||
+                (combinedError.includes("CORS") &&
+                  combinedError.includes("fonts.googleapis.com")) ||
+                combinedError.includes("Unsupported Content-Type"))
             ) {
-              // Auto-trigger error recovery after a short delay
+              autoRecoveryTriggeredRef.current = true;
+              console.log(
+                "🔧 Auto-triggering error recovery due to critical errors:",
+                combinedError
+              );
+              // Trigger recovery immediately for critical errors
               setTimeout(() => {
                 onErrorRecovery();
-              }, 1000);
+              }, 500);
             }
-          }, 2000); // 2 second delay to collect related errors
+          }, 1000); // Reduced from 2 seconds to 1 second
         }
 
         originalConsoleError(...args);
       };
 
-      // Restore original console.error after a longer delay
-      setTimeout(() => {
+      // Store reference for cleanup
+      errorDetectionRef.current = setTimeout(() => {
         console.error = originalConsoleError;
         if (errorTimeout) {
           clearTimeout(errorTimeout);
         }
-      }, 30000); // Increased to 30 seconds for better error detection
+      }, 20000); // Reduced from 30 to 20 seconds
     }, [url, handleError, onErrorRecovery]);
 
     // Handle iframe events
     const handleIframeLoad = () => {
       handleLoad();
 
+      // Clear load timeout since iframe loaded successfully
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+
       // Try to detect runtime errors in iframe content
-      // Note: This will fail for cross-origin iframes due to security restrictions
       try {
         const iframe = iframeRef.current;
         if (iframe && iframe.contentWindow) {
@@ -112,6 +146,14 @@ export const IframeRenderer = memo(
               url: url || undefined,
               timestamp: new Date(),
             });
+
+            // Auto-trigger recovery for runtime errors
+            if (!autoRecoveryTriggeredRef.current) {
+              autoRecoveryTriggeredRef.current = true;
+              setTimeout(() => {
+                onErrorRecovery();
+              }, 1000);
+            }
           });
 
           iframe.contentWindow.addEventListener(
@@ -123,6 +165,14 @@ export const IframeRenderer = memo(
                 url: url || undefined,
                 timestamp: new Date(),
               });
+
+              // Auto-trigger recovery for promise rejections
+              if (!autoRecoveryTriggeredRef.current) {
+                autoRecoveryTriggeredRef.current = true;
+                setTimeout(() => {
+                  onErrorRecovery();
+                }, 1000);
+              }
             }
           );
         }
@@ -132,9 +182,51 @@ export const IframeRenderer = memo(
           "Cross-origin iframe detected - using alternative error detection methods"
         );
       }
+
+      // Additional check: inspect iframe for common error indicators
+      setTimeout(() => {
+        try {
+          const iframe = iframeRef.current;
+          if (iframe && iframe.contentDocument) {
+            const doc = iframe.contentDocument;
+            const body = doc.body;
+
+            // Check for common error page indicators
+            if (
+              body &&
+              (body.textContent?.includes("Application error") ||
+                body.textContent?.includes("Runtime Error") ||
+                body.textContent?.includes("500") ||
+                body.textContent?.includes("502") ||
+                body.textContent?.includes("503") ||
+                body.textContent?.includes("504") ||
+                doc.title?.includes("Error") ||
+                doc.querySelector(".error") ||
+                doc.querySelector("#error") ||
+                doc.querySelector("[data-error]"))
+            ) {
+              handleError({
+                type: "runtime_error",
+                message: "Site appears to have a runtime error or server error",
+                ...(url && { url }),
+                timestamp: new Date(),
+              });
+
+              if (!autoRecoveryTriggeredRef.current) {
+                autoRecoveryTriggeredRef.current = true;
+                setTimeout(() => {
+                  onErrorRecovery();
+                }, 2000);
+              }
+            }
+          }
+        } catch {
+          // Ignore cross-origin errors
+        }
+      }, 3000); // Check 3 seconds after load
     };
 
-    // Monitor iframe load failures more aggressively
+    // Handle iframe load failures
     const handleIframeError = () => {
       handleError({
         type: "load_error",
@@ -142,20 +234,35 @@ export const IframeRenderer = memo(
         url: url || undefined,
         timestamp: new Date(),
       });
+
+      // Auto-trigger recovery for load errors
+      if (!autoRecoveryTriggeredRef.current) {
+        autoRecoveryTriggeredRef.current = true;
+        setTimeout(() => {
+          onErrorRecovery();
+        }, 2000);
+      }
     };
 
-    // Add timeout-based error detection for stuck loads
+    // Aggressive timeout-based error detection for stuck loads
     useEffect(() => {
       if (!url || isLoaded || error) return;
 
-      const errorTimeout = setTimeout(() => {
-        // Check if iframe is still loading after 10 seconds
+      // Clear any existing timeout
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+
+      loadTimeoutRef.current = setTimeout(() => {
+        // Check if iframe is still loading after 8 seconds
         const iframe = iframeRef.current;
         if (iframe && !isLoaded) {
+          console.log("🚨 Load timeout detected, triggering error detection");
+
           // Try to detect if there are console errors indicating issues
           checkForCommonErrors();
 
-          // Set a more specific timeout error
+          // Set a timeout error
           handleError({
             type: "runtime_error",
             message:
@@ -165,13 +272,24 @@ export const IframeRenderer = memo(
           });
 
           // Auto-trigger error recovery for timeout errors
-          setTimeout(() => {
-            onErrorRecovery();
-          }, 1000);
+          if (!autoRecoveryTriggeredRef.current) {
+            autoRecoveryTriggeredRef.current = true;
+            setTimeout(() => {
+              console.log(
+                "🔧 Auto-triggering error recovery due to load timeout"
+              );
+              onErrorRecovery();
+            }, 1000);
+          }
         }
-      }, 10000); // Reduced from 15 to 10 seconds for faster recovery
+      }, 8000); // Reduced from 10 to 8 seconds for faster recovery
 
-      return () => clearTimeout(errorTimeout);
+      return () => {
+        if (loadTimeoutRef.current) {
+          clearTimeout(loadTimeoutRef.current);
+          loadTimeoutRef.current = null;
+        }
+      };
     }, [
       url,
       isLoaded,
@@ -191,6 +309,20 @@ export const IframeRenderer = memo(
 
     // Update iframe src when URL changes and start error monitoring
     useEffect(() => {
+      // Clean up previous monitoring
+      if (errorDetectionRef.current) {
+        clearTimeout(errorDetectionRef.current);
+        errorDetectionRef.current = null;
+      }
+
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+
+      // Reset auto-recovery flag for new URL
+      autoRecoveryTriggeredRef.current = false;
+
       if (iframeRef.current && url) {
         iframeRef.current.src = url;
       }
@@ -199,6 +331,16 @@ export const IframeRenderer = memo(
       if (url) {
         checkForCommonErrors();
       }
+
+      return () => {
+        // Cleanup on unmount or URL change
+        if (errorDetectionRef.current) {
+          clearTimeout(errorDetectionRef.current);
+        }
+        if (loadTimeoutRef.current) {
+          clearTimeout(loadTimeoutRef.current);
+        }
+      };
     }, [url, checkForCommonErrors]);
 
     if (!url) {
@@ -247,11 +389,11 @@ export const IframeRenderer = memo(
               <div className="space-y-2">
                 <h3 className="text-xl font-semibold">Auto-Fixing Issue</h3>
                 <p className="text-muted-foreground text-sm">
-                  The system is working to fix the code issues and will
-                  regenerate the site...
+                  The system detected runtime errors and is automatically
+                  working to fix them...
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  This may take 30-60 seconds
+                  This typically resolves within 30-60 seconds
                 </p>
               </div>
 
@@ -342,15 +484,22 @@ export const IframeRenderer = memo(
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                handleError({
-                  type: "runtime_error",
-                  message:
-                    "Site appears to have issues loading correctly. Common causes include CORS errors, missing fonts, or failed resource loads.",
-                  url: url || undefined,
-                  timestamp: new Date(),
-                })
-              }
+              onClick={() => {
+                if (!autoRecoveryTriggeredRef.current) {
+                  autoRecoveryTriggeredRef.current = true;
+                  handleError({
+                    type: "runtime_error",
+                    message:
+                      "Site appears to have issues loading correctly. Common causes include CORS errors, missing fonts, or failed resource loads.",
+                    ...(url && { url }),
+                    timestamp: new Date(),
+                  });
+                  // Auto-trigger recovery for manual reports
+                  setTimeout(() => {
+                    onErrorRecovery();
+                  }, 1000);
+                }
+              }}
               className="text-xs opacity-75 hover:opacity-100"
             >
               <AlertCircle className="w-3 h-3 mr-2" />

@@ -13,8 +13,8 @@ export const createProject = mutation({
     const now = Date.now();
     const projectId = await ctx.db.insert("projects", {
       prompt: args.prompt,
-      demoUrl: args.demoUrl,
-      chatId: args.chatId,
+      ...(args.demoUrl && { demoUrl: args.demoUrl }),
+      ...(args.chatId && { chatId: args.chatId }),
       createdAt: now,
       updatedAt: now,
       status: "active",
@@ -122,7 +122,7 @@ export const startDeployment = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "building",
+      deploymentStatus: "deploying",
       deploymentStartedAt: now,
       deploymentCompletedAt: undefined,
       deploymentError: undefined,
@@ -137,10 +137,10 @@ export const updateDeploymentStatus = mutation({
     projectId: v.id("projects"),
     status: v.union(
       v.literal("pending"),
-      v.literal("building"),
-      v.literal("ready"),
-      v.literal("error"),
-      v.literal("canceled")
+      v.literal("syncing"),
+      v.literal("deploying"),
+      v.literal("deployed"),
+      v.literal("failed")
     ),
     deploymentUrl: v.optional(v.string()),
     error: v.optional(v.string()),
@@ -151,10 +151,10 @@ export const updateDeploymentStatus = mutation({
     const updateData: {
       deploymentStatus:
         | "pending"
-        | "building"
-        | "ready"
-        | "error"
-        | "canceled";
+        | "syncing"
+        | "deploying"
+        | "deployed"
+        | "failed";
       updatedAt: number;
       deploymentUrl?: string;
       deploymentError?: string;
@@ -172,7 +172,7 @@ export const updateDeploymentStatus = mutation({
       updateData.deploymentError = args.error;
     }
 
-    if (args.status === "ready") {
+    if (args.status === "deployed") {
       updateData.deploymentCompletedAt = now;
     }
 
@@ -191,11 +191,13 @@ export const completeDeployment = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "ready",
+      deploymentStatus: "deployed",
       deploymentUrl: args.deploymentUrl,
       deploymentCompletedAt: now,
       deploymentError: undefined,
-      ...(args.vercelDeploymentId && { vercelDeploymentId: args.vercelDeploymentId }),
+      ...(args.vercelDeploymentId && {
+        vercelDeploymentId: args.vercelDeploymentId,
+      }),
       updatedAt: now,
     });
   },
@@ -211,7 +213,7 @@ export const failDeployment = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch(args.projectId, {
-      deploymentStatus: "error",
+      deploymentStatus: "failed",
       deploymentError: args.error,
       deploymentCompletedAt: now,
       updatedAt: now,
@@ -420,7 +422,10 @@ export const getRecentProjects = query({
           })
         )
       ),
-      // Deployment tracking fields
+      // Deployment tracking fields - simplified for v0 Platform API
+      isPublished: v.optional(v.boolean()),
+      v0DeploymentId: v.optional(v.string()),
+      vercelDeploymentId: v.optional(v.string()),
       deploymentStatus: v.optional(
         v.union(
           v.literal("pending"),
@@ -430,7 +435,7 @@ export const getRecentProjects = query({
           v.literal("failed")
         )
       ),
-      githubCommitSha: v.optional(v.string()),
+      deploymentUrl: v.optional(v.string()),
       deploymentStartedAt: v.optional(v.number()),
       deploymentCompletedAt: v.optional(v.number()),
       deploymentError: v.optional(v.string()),
@@ -479,7 +484,10 @@ export const getProject = query({
           })
         )
       ),
-      // Deployment tracking fields
+      // Deployment tracking fields - simplified for v0 Platform API
+      isPublished: v.optional(v.boolean()),
+      v0DeploymentId: v.optional(v.string()),
+      vercelDeploymentId: v.optional(v.string()),
       deploymentStatus: v.optional(
         v.union(
           v.literal("pending"),
@@ -489,7 +497,7 @@ export const getProject = query({
           v.literal("failed")
         )
       ),
-      githubCommitSha: v.optional(v.string()),
+      deploymentUrl: v.optional(v.string()),
       deploymentStartedAt: v.optional(v.number()),
       deploymentCompletedAt: v.optional(v.number()),
       deploymentError: v.optional(v.string()),
@@ -585,7 +593,10 @@ export const getProjectWithFiles = query({
             })
           )
         ),
-        // Deployment tracking fields
+        // Deployment tracking fields - simplified for v0 Platform API
+        isPublished: v.optional(v.boolean()),
+        v0DeploymentId: v.optional(v.string()),
+        vercelDeploymentId: v.optional(v.string()),
         deploymentStatus: v.optional(
           v.union(
             v.literal("pending"),
@@ -595,7 +606,7 @@ export const getProjectWithFiles = query({
             v.literal("failed")
           )
         ),
-        githubCommitSha: v.optional(v.string()),
+        deploymentUrl: v.optional(v.string()),
         deploymentStartedAt: v.optional(v.number()),
         deploymentCompletedAt: v.optional(v.number()),
         deploymentError: v.optional(v.string()),
@@ -676,7 +687,10 @@ export const getFullProjectData = query({
             })
           )
         ),
-        // Deployment tracking fields
+        // Deployment tracking fields - simplified for v0 Platform API
+        isPublished: v.optional(v.boolean()),
+        v0DeploymentId: v.optional(v.string()),
+        vercelDeploymentId: v.optional(v.string()),
         deploymentStatus: v.optional(
           v.union(
             v.literal("pending"),
@@ -686,7 +700,7 @@ export const getFullProjectData = query({
             v.literal("failed")
           )
         ),
-        githubCommitSha: v.optional(v.string()),
+        deploymentUrl: v.optional(v.string()),
         deploymentStartedAt: v.optional(v.number()),
         deploymentCompletedAt: v.optional(v.number()),
         deploymentError: v.optional(v.string()),
@@ -800,7 +814,10 @@ export const getProjectsWithDemos = query({
         v.union(v.literal("active"), v.literal("error"), v.literal("completed"))
       ),
       screenshotStorageId: v.optional(v.id("_storage")),
-      // Deployment tracking fields
+      // Deployment tracking fields - simplified for v0 Platform API
+      isPublished: v.optional(v.boolean()),
+      v0DeploymentId: v.optional(v.string()),
+      vercelDeploymentId: v.optional(v.string()),
       deploymentStatus: v.optional(
         v.union(
           v.literal("pending"),
@@ -810,7 +827,7 @@ export const getProjectsWithDemos = query({
           v.literal("failed")
         )
       ),
-      githubCommitSha: v.optional(v.string()),
+      deploymentUrl: v.optional(v.string()),
       deploymentStartedAt: v.optional(v.number()),
       deploymentCompletedAt: v.optional(v.number()),
       deploymentError: v.optional(v.string()),

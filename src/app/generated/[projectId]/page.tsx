@@ -40,9 +40,29 @@ function GeneratedSiteContent() {
     useState<React.ComponentType | null>(null);
 
   useEffect(() => {
-    // For now, disable filesystem component loading to prevent build issues
-    // This will be re-enabled once GitHub sync is working and files exist
-    setFilesystemComponent(null);
+    async function loadFilesystemComponent() {
+      try {
+        // Only try to import if we know the project is deployed/local and we're in the browser
+        if (
+          typeof window !== "undefined" &&
+          projectData?.project?.deploymentStatus === "deployed" &&
+          projectData?.project?.localUrl
+        ) {
+          const modulePath = `../../../../generated/${projectId}/page`;
+          const componentModule = await import(modulePath);
+          setFilesystemComponent(() => componentModule.default);
+        } else {
+          setFilesystemComponent(null);
+        }
+      } catch {
+        console.log("Filesystem component not found, using database fallback");
+        setFilesystemComponent(null);
+      }
+    }
+
+    if (projectId && projectData) {
+      loadFilesystemComponent();
+    }
   }, [projectId, projectData]);
 
   // Update deployment status when project data changes

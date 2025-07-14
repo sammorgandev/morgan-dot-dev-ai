@@ -1,13 +1,15 @@
 "use server";
 
 import { v0 } from "v0-sdk";
+
+// Initialize v0 client
+const v0Client = v0;
 import type {
   ActionState,
   ContinueChatActionState,
   ChatMessage,
 } from "@/lib/types";
 import { DESIGN_KEYWORDS, PUBLIC_IMAGE_URL } from "@/lib/constants";
-// Removed SYSTEM_PROMPT - using more flexible approach
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -15,7 +17,7 @@ import {
   captureScreenshotWithRetry,
   uploadScreenshotToConvex,
 } from "@/lib/screenshot";
-import { syncGeneratedSite, checkDeploymentStatus } from "@/lib/github-sync";
+import { syncGeneratedSiteLocally } from "@/lib/local-file-sync";
 
 // Validate the user's prompt
 function validatePrompt(prompt: string): { isValid: boolean; error?: string } {
@@ -78,7 +80,7 @@ function validateContinuationMessage(message: string): {
 }
 
 export async function sendMessage(
-  prevState: ActionState,
+  _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   const message = formData.get("message");
@@ -91,7 +93,7 @@ export async function sendMessage(
   // Validate prompt content
   const validation = validatePrompt(message);
   if (!validation.isValid) {
-    return { error: validation.error };
+    return { error: validation.error || "Invalid prompt" };
   }
 
   // Create flexible prompt with core info but creative freedom
@@ -108,9 +110,23 @@ Core information to include:
 Feel free to be creative with the layout, styling, animations, and overall design approach. Use React, TypeScript, and Tailwind CSS. Make it responsive and engaging.`;
 
   try {
+    console.log("🚀 Starting v0 chat creation...");
+    console.log("Environment check:", {
+      hasConvexUrl: !!process.env.NEXT_PUBLIC_CONVEX_URL,
+      hasV0ApiKey: !!process.env.V0_API_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      hasVercel: !!process.env.VERCEL,
+    });
+
     // Create chat with v0 platform API
-    const chat = await v0.chats.create({
+    const chat = await v0Client.chats.create({
       message: flexiblePrompt,
+    });
+
+    console.log("✅ v0 chat created successfully:", {
+      id: chat.id,
+      hasDemo: !!chat.demo,
+      filesCount: chat.files?.length || 0,
     });
 
     // Initialize Convex client
@@ -119,11 +135,11 @@ Feel free to be creative with the layout, styling, animations, and overall desig
     // Save project to database
     const projectId = await convex.mutation(api.projects.createProject, {
       prompt: message,
-      demoUrl: chat.demo,
+      ...(chat.demo && { demoUrl: chat.demo }),
       chatId: chat.id,
     });
 
-    // Save files to database if they exist
+    // Save files to database and handle local development
     if (chat.files && chat.files.length > 0) {
       const files = chat.files.map((file) => ({
         filename: file.meta?.file || `file_${Date.now()}`,
@@ -136,42 +152,42 @@ Feel free to be creative with the layout, styling, animations, and overall desig
         files,
       });
 
-      // Start deployment process
-      await convex.mutation(api.projects.startDeployment, {
-        projectId,
-      });
+      // Local development: write files directly to filesystem
+      const isDevelopment =
+        process.env.NODE_ENV === "development" || !process.env.VERCEL;
 
-      // Start GitHub sync process asynchronously
-      syncGeneratedSite(projectId, files)
-        .then(async (syncResult) => {
-          if (syncResult.success) {
-            // Mark deployment as successful
-            await convex.mutation(api.projects.completeDeployment, {
-              projectId,
-              localUrl: syncResult.localUrl!,
-              commitSha: syncResult.commitSha,
-            });
+      if (isDevelopment) {
+        console.log("🔍 Local development mode - writing files to filesystem");
+        try {
+          const localResult = await syncGeneratedSiteLocally(projectId, files);
 
-            // Wait for deployment to be live
-            const isDeployed = await checkDeploymentStatus(projectId);
-            if (isDeployed) {
-              console.log("Deployment is live for project:", projectId);
-            }
+          if (localResult.success && localResult.localUrl) {
+            // For local development, we just mark the deployment as complete
+            // The v0 demo URL is the primary URL for local development
+            console.log(
+              "✅ Local files written, using demo URL as primary URL"
+            );
+            console.log("✅ Local files written for project:", projectId);
           } else {
-            // Mark deployment as failed
             await convex.mutation(api.projects.failDeployment, {
               projectId,
-              error: syncResult.error || "Unknown deployment error",
+              error: localResult.error || "Local file sync failed",
             });
           }
-        })
-        .catch(async (error) => {
-          console.error("GitHub sync failed:", error);
+        } catch (error) {
+          console.error("❌ Local sync error:", error);
           await convex.mutation(api.projects.failDeployment, {
             projectId,
             error: error instanceof Error ? error.message : String(error),
           });
+        }
+      } else {
+        // Production: v0 platform handles deployment automatically via Vercel
+        console.log("🚀 Production mode - using v0 platform deployment");
+        await convex.mutation(api.projects.startDeployment, {
+          projectId,
         });
+      }
     }
 
     // Save initial messages to database
@@ -233,23 +249,28 @@ Feel free to be creative with the layout, styling, animations, and overall desig
       success: true,
       data: {
         id: chat.id,
-        demo: chat.demo, // This should contain the iframe URL
+        ...(chat.demo && { demo: chat.demo }),
         files: chat.files || [],
-        projectId, // Add projectId to the response
+        projectId,
         messages: initialMessages,
       },
     };
   } catch (error) {
     console.error("Error creating chat with v0:", error);
+    console.error("Error details:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return {
-      error: "Failed to generate site customization. Please try again.",
+      error: `Failed to generate site customization: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
 
 // New action to continue v0 conversations
 export async function continueChat(
-  prevState: ContinueChatActionState,
+  _prevState: ContinueChatActionState,
   formData: FormData
 ): Promise<ContinueChatActionState> {
   const message = formData.get("message");
@@ -272,16 +293,26 @@ export async function continueChat(
   // Validate continuation message
   const validation = validateContinuationMessage(message);
   if (!validation.isValid) {
-    return { error: validation.error };
+    return { error: validation.error || "Invalid message" };
   }
 
   try {
     const startTime = Date.now();
 
+    console.log("🚀 Continuing v0 chat...", {
+      chatId,
+      messageLength: message.length,
+    });
+
     // Continue the chat with v0 platform API
-    const chat = await v0.chats.createMessage({
+    const chat = await v0Client.chats.createMessage({
       chatId,
       message: message.trim(),
+    });
+
+    console.log("✅ v0 chat continued successfully:", {
+      hasDemo: !!chat.demo,
+      filesCount: chat.files?.length || 0,
     });
 
     const processingTime = Date.now() - startTime;
@@ -319,7 +350,7 @@ export async function continueChat(
       })),
     });
 
-    // Update files if they exist
+    // Update files and handle local development
     if (chat.files && chat.files.length > 0) {
       const files = chat.files.map((file) => ({
         filename: file.meta?.file || `file_${Date.now()}`,
@@ -332,50 +363,49 @@ export async function continueChat(
         files,
       });
 
-      // Start deployment process
-      await convex.mutation(api.projects.startDeployment, {
-        projectId: projectId as Id<"projects">,
-      });
+      // Local development: write files directly to filesystem
+      const isDevelopment =
+        process.env.NODE_ENV === "development" || !process.env.VERCEL;
 
-      // Start GitHub sync process asynchronously
-      syncGeneratedSite(projectId, files)
-        .then(async (syncResult) => {
-          if (syncResult.success) {
-            // Mark deployment as successful
-            await convex.mutation(api.projects.completeDeployment, {
-              projectId: projectId as Id<"projects">,
-              localUrl: syncResult.localUrl!,
-              commitSha: syncResult.commitSha,
-            });
+      if (isDevelopment) {
+        console.log("🔍 Local development mode - updating files");
+        try {
+          const localResult = await syncGeneratedSiteLocally(projectId, files);
 
-            // Wait for deployment to be live
-            const isDeployed = await checkDeploymentStatus(projectId);
-            if (isDeployed) {
-              console.log("Deployment updated for project:", projectId);
-            }
+          if (localResult.success && localResult.localUrl) {
+            // For local development, we just mark the deployment as complete
+            // The v0 demo URL is the primary URL for local development
+            console.log("✅ Local files updated for project:", projectId);
           } else {
-            // Mark deployment as failed
             await convex.mutation(api.projects.failDeployment, {
               projectId: projectId as Id<"projects">,
-              error: syncResult.error || "Unknown deployment error",
+              error: localResult.error || "Local file sync failed",
             });
           }
-        })
-        .catch(async (error) => {
-          console.error("GitHub sync failed:", error);
+        } catch (error) {
+          console.error("❌ Local sync error:", error);
           await convex.mutation(api.projects.failDeployment, {
             projectId: projectId as Id<"projects">,
             error: error instanceof Error ? error.message : String(error),
           });
+        }
+      } else {
+        // Production: v0 platform handles deployment automatically via Vercel
+        console.log("🚀 Production mode - using v0 platform deployment");
+        await convex.mutation(api.projects.startDeployment, {
+          projectId: projectId as Id<"projects">,
         });
+      }
     }
 
     // Update project status and demo URL
-    await convex.mutation(api.projects.updateProjectStatus, {
-      projectId: projectId as Id<"projects">,
-      status: "active",
-      demoUrl: chat.demo,
-    });
+    if (chat.demo) {
+      await convex.mutation(api.projects.updateProjectStatus, {
+        projectId: projectId as Id<"projects">,
+        status: "active",
+        demoUrl: chat.demo,
+      });
+    }
 
     // Capture screenshot asynchronously (don't wait for it to complete)
     if (chat.demo) {
@@ -408,7 +438,7 @@ export async function continueChat(
       success: true,
       data: {
         id: chatId,
-        demo: chat.demo,
+        ...(chat.demo && { demo: chat.demo }),
         files: chat.files || [],
         projectId,
         messages: [userMessage, assistantMessage],
@@ -416,6 +446,11 @@ export async function continueChat(
     };
   } catch (error) {
     console.error("Error continuing chat with v0:", error);
+    console.error("Error details:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     // Initialize Convex client for error logging
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -432,14 +467,14 @@ export async function continueChat(
     }
 
     return {
-      error: "Failed to continue the conversation. Please try again.",
+      error: `Failed to continue the conversation: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
 
 // Action to handle automatic error recovery
 export async function handleErrorRecovery(
-  prevState: ContinueChatActionState,
+  _prevState: ContinueChatActionState,
   formData: FormData
 ): Promise<ContinueChatActionState> {
   const errorMessage = formData.get("errorMessage");
@@ -551,8 +586,7 @@ Update the code to make it work reliably.`;
           ...userMessage.metadata,
           isError: true,
           errorDetails: errorMessage,
-          originalPrompt:
-            typeof originalPrompt === "string" ? originalPrompt : undefined,
+          ...(typeof originalPrompt === "string" && { originalPrompt }),
         };
       }
     }

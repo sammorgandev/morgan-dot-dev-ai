@@ -5,7 +5,7 @@
 import { useUIStore } from "./stores/ui-store";
 import { useChatStore } from "./stores/chat-store";
 import { useProjectStore } from "./stores/project-store";
-import { ErrorRecoveryOptions } from "./types";
+import { ChatMessage, ErrorRecoveryOptions } from "./types";
 
 // Create a combined store hook for backward compatibility
 export const useAppStore = () => {
@@ -96,7 +96,7 @@ export const useAppStore = () => {
       };
 
       // Add error recovery message and trigger continuation
-      chat.addMessage(errorMessage);
+      chat.addMessage(errorMessage as ChatMessage);
       chat.setIframeError(null);
       chat.setIsContinuing(true);
     },

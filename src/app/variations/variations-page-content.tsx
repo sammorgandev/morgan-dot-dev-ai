@@ -25,10 +25,10 @@ type ProjectWithDemos = {
   isPublished?: boolean;
   deploymentStatus?:
     | "pending"
-    | "building"
-    | "ready"
-    | "error"
-    | "canceled";
+    | "syncing"
+    | "deploying"
+    | "deployed"
+    | "failed";
   deploymentUrl?: string;
   deploymentError?: string;
 };
@@ -84,19 +84,19 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
             {project.deploymentStatus && (
               <Badge
                 variant={
-                  project.deploymentStatus === "ready"
+                  project.deploymentStatus === "deployed"
                     ? "default"
-                    : project.deploymentStatus === "error"
+                    : project.deploymentStatus === "failed"
                       ? "destructive"
                       : "secondary"
                 }
                 className="text-xs"
               >
-                {project.deploymentStatus === "building" && "🔄 Building"}
-                {project.deploymentStatus === "ready" && "✅ Live"}
-                {project.deploymentStatus === "error" && "❌ Failed"}
+                {project.deploymentStatus === "deploying" && "🔄 Deploying"}
+                {project.deploymentStatus === "deployed" && "✅ Live"}
+                {project.deploymentStatus === "failed" && "❌ Failed"}
                 {project.deploymentStatus === "pending" && "⏳ Pending"}
-                {project.deploymentStatus === "canceled" && "⏹️ Canceled"}
+                {project.deploymentStatus === "syncing" && "🔄 Syncing"}
               </Badge>
             )}
           </div>
@@ -123,14 +123,15 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
             <Button
               size="sm"
               variant={
-                project.deploymentStatus === "ready" ? "default" : "outline"
+                project.deploymentStatus === "deployed" ? "default" : "outline"
               }
               className="flex-1"
               asChild
             >
               <a
                 href={
-                  project.deploymentStatus === "ready" && project.deploymentUrl
+                  project.deploymentStatus === "deployed" &&
+                  project.deploymentUrl
                     ? project.deploymentUrl
                     : project.demoUrl
                 }
@@ -138,7 +139,7 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
-                {project.deploymentStatus === "ready"
+                {project.deploymentStatus === "deployed"
                   ? "View Live Site"
                   : "View Demo"}
               </a>
@@ -146,7 +147,7 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
           )}
 
           {/* Secondary action - show demo URL if we have a deployed site */}
-          {project.deploymentStatus === "ready" &&
+          {project.deploymentStatus === "deployed" &&
             project.deploymentUrl &&
             project.demoUrl && (
               <Button size="sm" variant="ghost" className="flex-1" asChild>
@@ -163,7 +164,7 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
         </div>
 
         {/* Deployment Error */}
-        {project.deploymentStatus === "error" && project.deploymentError && (
+        {project.deploymentStatus === "failed" && project.deploymentError && (
           <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
             <strong>Deployment failed:</strong> {project.deploymentError}
           </div>
@@ -189,11 +190,13 @@ function formatTimeAgo(timestamp: number): string {
 export function VariationsPageContent({
   preloadedVariationsData,
 }: VariationsPageContentProps) {
-  const allProjects = usePreloadedQuery(preloadedVariationsData);
-  
+  const allProjects: ProjectWithDemos[] = usePreloadedQuery(
+    preloadedVariationsData
+  );
+
   // Filter to only show published projects with completed deployments
   const publishedProjects = allProjects.filter(
-    (project) => project.isPublished && project.deploymentStatus === "ready"
+    (project) => project.isPublished && project.deploymentStatus === "deployed"
   );
 
   if (publishedProjects.length === 0) {
@@ -203,7 +206,8 @@ export function VariationsPageContent({
           <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">No published sites found yet.</p>
           <p className="text-sm">
-            Sites will appear here once they&apos;re published and deployed successfully.
+            Sites will appear here once they&apos;re published and deployed
+            successfully.
           </p>
         </div>
       </div>

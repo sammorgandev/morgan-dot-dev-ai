@@ -49,9 +49,9 @@ export function DemoViewer() {
 
   // Check deployment status
   const isPublished = projectData?.isPublished;
-  const isDeployed = projectData?.deploymentStatus === "ready";
-  const isDeploying = projectData?.deploymentStatus === "building";
-  const deploymentFailed = projectData?.deploymentStatus === "error";
+  const isDeployed = projectData?.deploymentStatus === "deployed";
+  const isDeploying = projectData?.deploymentStatus === "deploying";
+  const deploymentFailed = projectData?.deploymentStatus === "failed";
 
   // Handle automatic error recovery
   const handleAutoRecovery = async () => {
@@ -87,6 +87,10 @@ export function DemoViewer() {
   // Handle project publishing
   const handlePublish = async () => {
     if (!currentProjectId || !chat.currentChatId) {
+      console.error("❌ Missing required data for publish:", {
+        currentProjectId,
+        currentChatId: chat.currentChatId,
+      });
       return;
     }
 
@@ -100,13 +104,16 @@ export function DemoViewer() {
         return await publishProject({}, formData);
       },
       onSuccess: (result: unknown) => {
-        const typedResult = result as { success?: boolean; data?: { deploymentUrl?: string } };
+        const typedResult = result as {
+          success?: boolean;
+          data?: { deploymentUrl?: string };
+        };
         if (typedResult?.success) {
-          console.log("Project published successfully:", typedResult.data);
+          console.log("🎉 Project published successfully:", typedResult.data);
         }
       },
       onError: (error) => {
-        console.error("Failed to publish project:", error);
+        console.error("❌ Failed to publish project:", error);
       },
     });
   };
@@ -182,7 +189,7 @@ export function DemoViewer() {
         onFollowUpSubmit={handleFollowUpSubmit}
         isProcessing={isActionProcessing("continue-chat")}
         onPublish={handlePublish}
-        isPublished={isPublished}
+        isPublished={!!isPublished}
         isDeployed={isDeployed}
         deploymentUrl={projectData?.deploymentUrl}
         isDeploying={isDeploying}

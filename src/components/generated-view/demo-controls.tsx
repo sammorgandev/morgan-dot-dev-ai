@@ -21,7 +21,7 @@ interface DemoControlsProps {
   onPublish?: () => void;
   isPublished?: boolean;
   isDeployed?: boolean;
-  deploymentUrl?: string;
+  deploymentUrl?: string | undefined;
   isDeploying?: boolean;
 }
 
@@ -132,7 +132,7 @@ export function DemoControls({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(deploymentUrl, '_blank')}
+            onClick={() => window.open(deploymentUrl, "_blank")}
             className="bg-background/80 backdrop-blur-sm"
           >
             <ExternalLink className="h-4 w-4 mr-1" />
