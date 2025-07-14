@@ -68,15 +68,17 @@ export const publishProject = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, {
-      isPublished: true,
-      v0DeploymentId: args.v0DeploymentId,
-      vercelDeploymentId: args.vercelDeploymentId,
-      deploymentUrl: args.deploymentUrl,
-      deploymentStatus: "pending",
-      deploymentStartedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+    if (args.v0DeploymentId) {
+      await ctx.db.patch(args.projectId, {
+        isPublished: true,
+        v0DeploymentId: args.v0DeploymentId,
+        vercelDeploymentId: args.vercelDeploymentId,
+        deploymentUrl: args.deploymentUrl,
+        deploymentStatus: "pending",
+        deploymentStartedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
 
