@@ -68,17 +68,34 @@ export const publishProject = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const updateData: {
+      isPublished: boolean;
+      deploymentStatus: "pending";
+      deploymentStartedAt: number;
+      updatedAt: number;
+      v0DeploymentId?: string;
+      vercelDeploymentId?: string;
+      deploymentUrl?: string;
+    } = {
+      isPublished: true,
+      deploymentStatus: "pending",
+      deploymentStartedAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
     if (args.v0DeploymentId) {
-      await ctx.db.patch(args.projectId, {
-        isPublished: true,
-        v0DeploymentId: args.v0DeploymentId,
-        vercelDeploymentId: args.vercelDeploymentId,
-        deploymentUrl: args.deploymentUrl,
-        deploymentStatus: "pending",
-        deploymentStartedAt: Date.now(),
-        updatedAt: Date.now(),
-      });
+      updateData.v0DeploymentId = args.v0DeploymentId;
     }
+
+    if (args.vercelDeploymentId) {
+      updateData.vercelDeploymentId = args.vercelDeploymentId;
+    }
+
+    if (args.deploymentUrl) {
+      updateData.deploymentUrl = args.deploymentUrl;
+    }
+
+    await ctx.db.patch(args.projectId, updateData);
   },
 });
 
@@ -126,8 +143,6 @@ export const startDeployment = mutation({
     await ctx.db.patch(args.projectId, {
       deploymentStatus: "deploying",
       deploymentStartedAt: now,
-      deploymentCompletedAt: undefined,
-      deploymentError: undefined,
       updatedAt: now,
     });
   },
@@ -192,16 +207,24 @@ export const completeDeployment = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
-    await ctx.db.patch(args.projectId, {
+    const updateData: {
+      deploymentStatus: "deployed";
+      deploymentUrl: string;
+      deploymentCompletedAt: number;
+      updatedAt: number;
+      vercelDeploymentId?: string;
+    } = {
       deploymentStatus: "deployed",
       deploymentUrl: args.deploymentUrl,
       deploymentCompletedAt: now,
-      deploymentError: undefined,
-      ...(args.vercelDeploymentId && {
-        vercelDeploymentId: args.vercelDeploymentId,
-      }),
       updatedAt: now,
-    });
+    };
+
+    if (args.vercelDeploymentId) {
+      updateData.vercelDeploymentId = args.vercelDeploymentId;
+    }
+
+    await ctx.db.patch(args.projectId, updateData);
   },
 });
 
