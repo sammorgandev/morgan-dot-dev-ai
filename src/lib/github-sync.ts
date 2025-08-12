@@ -15,7 +15,7 @@ interface GitHubSyncOptions {
 export class GitHubSyncError extends Error {
   constructor(
     message: string,
-    public cause?: Error
+    public _cause?: Error
   ) {
     super(message);
     this.name = "GitHubSyncError";

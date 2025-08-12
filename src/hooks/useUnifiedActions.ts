@@ -4,23 +4,23 @@ import { useState, useCallback, useRef } from "react";
 interface ActionRequest {
   id: string;
   execute: () => Promise<unknown>;
-  onSuccess?: (result: unknown) => void;
-  onError?: (error: string) => void;
+  onSuccess?: (_result: unknown) => void;
+  onError?: (_error: string) => void;
 }
 
 interface ActionState {
   isProcessing: boolean;
   currentAction: string | null;
-  error: string | null;
-  lastResult: unknown;
+  _error: string | null;
+  _lastResult: unknown;
 }
 
 export const useUnifiedActions = () => {
   const [state, setState] = useState<ActionState>({
     isProcessing: false,
     currentAction: null,
-    error: null,
-    lastResult: null,
+    _error: null,
+    _lastResult: null,
   });
 
   const actionQueueRef = useRef<ActionRequest[]>([]);

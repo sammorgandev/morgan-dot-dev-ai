@@ -136,7 +136,14 @@ export const seedPortfolioProjects = mutation({
 
     // Insert projects
     for (const project of projects) {
-      await ctx.db.insert("portfolioProjects", project);
+      const cleanProject = { ...project };
+      // Remove undefined values to match exactOptionalPropertyTypes
+      Object.keys(cleanProject).forEach((key) => {
+        if (cleanProject[key as keyof typeof cleanProject] === undefined) {
+          delete cleanProject[key as keyof typeof cleanProject];
+        }
+      });
+      await ctx.db.insert("portfolioProjects", cleanProject as any);
     }
 
     return { success: true, projectsCreated: projects.length };

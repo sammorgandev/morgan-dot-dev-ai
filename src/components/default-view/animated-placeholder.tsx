@@ -34,6 +34,7 @@ export function useAnimatedPlaceholder() {
         // Finished deleting, move to next example
         setCurrentExample((prev) => (prev + 1) % DESIGN_EXAMPLES.length);
         setIsTyping(true);
+        return () => {}; // No cleanup needed for this case
       }
     }
   }, [displayText, isTyping, currentExample]);

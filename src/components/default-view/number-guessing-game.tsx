@@ -12,8 +12,10 @@ export function NumberGuessingGame() {
   const [guess, setGuess] = useState<string>("");
   const [guesses, setGuesses] = useState<number[]>([]);
   const [gameOver, setGameOver] = useState<boolean>(false);
-  const [gameWon, setGameWon] = useState<boolean>(false);
-  const [hint, setHint] = useState<string>("I'm thinking of a number between 1 and 100");
+
+  const [hint, setHint] = useState<string>(
+    "I'm thinking of a number between 1 and 100"
+  );
 
   const startNewGame = () => {
     const randomNumber = Math.floor(Math.random() * 100) + 1;
@@ -21,7 +23,7 @@ export function NumberGuessingGame() {
     setGuess("");
     setGuesses([]);
     setGameOver(false);
-    setGameWon(false);
+
     setHint("I'm thinking of a number between 1 and 100");
   };
 
@@ -33,7 +35,6 @@ export function NumberGuessingGame() {
     setGuesses(newGuesses);
 
     if (numGuess === targetNumber) {
-      setGameWon(true);
       setGameOver(true);
       setHint(`🎉 Correct! You found it in ${newGuesses.length} tries!`);
     } else if (newGuesses.length >= 7) {
@@ -107,8 +108,8 @@ export function NumberGuessingGame() {
               placeholder="Enter your guess..."
               className="text-center"
             />
-            <Button 
-              onClick={submitGuess} 
+            <Button
+              onClick={submitGuess}
               className="w-full"
               disabled={!guess || isNaN(parseInt(guess))}
             >

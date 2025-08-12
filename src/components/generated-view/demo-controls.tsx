@@ -16,7 +16,7 @@ import { useAppStore } from "@/lib/store";
 import { useState } from "react";
 
 interface DemoControlsProps {
-  onFollowUpSubmit: (message: string) => void;
+  onFollowUpSubmit: (_message: string) => void;
   isProcessing: boolean;
   onPublish?: () => void;
   isPublished?: boolean;

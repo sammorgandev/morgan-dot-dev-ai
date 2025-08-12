@@ -7,9 +7,9 @@ interface ProjectState {
   prompt: string;
 
   // Project actions
-  setCurrentProjectId: (projectId: string | null) => void;
-  setDemoUrl: (demoUrl: string | null) => void;
-  setPrompt: (prompt: string) => void;
+  setCurrentProjectId: (_projectId: string | null) => void;
+  setDemoUrl: (_demoUrl: string | null) => void;
+  setPrompt: (_prompt: string) => void;
   resetProject: () => void;
 }
 

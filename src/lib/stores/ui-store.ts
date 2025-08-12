@@ -7,9 +7,9 @@ interface UIState {
   showFiles: boolean;
 
   // UI actions
-  setIsFullscreen: (isFullscreen: boolean) => void;
-  setShowDemo: (showDemo: boolean) => void;
-  setShowFiles: (showFiles: boolean) => void;
+  setIsFullscreen: (_isFullscreen: boolean) => void;
+  setShowDemo: (_showDemo: boolean) => void;
+  setShowFiles: (_showFiles: boolean) => void;
   toggleFullscreen: () => void;
   toggleView: () => void;
   closeDemo: () => void;

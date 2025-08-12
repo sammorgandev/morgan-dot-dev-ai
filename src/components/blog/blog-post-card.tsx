@@ -123,7 +123,7 @@ export function BlogPostCard({ post, variant = "recent" }: BlogPostCardProps) {
             {/* Tags */}
             <TagsList
               tags={post.tags}
-              maxVisible={isRecent ? 3 : undefined}
+              {...(isRecent && { maxVisible: 3 })}
               variant={isFeatured ? "secondary" : "outline"}
               size={isRecent ? "sm" : "default"}
               showIcon={isFeatured}

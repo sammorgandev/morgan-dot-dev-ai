@@ -9,17 +9,17 @@ interface ChatStoreState {
   followUpInput: string;
 
   // Chat actions
-  setChatId: (chatId: string) => void;
-  addMessage: (message: ChatMessage) => void;
-  updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
-  setChatLoading: (loading: boolean) => void;
-  setChatError: (error: string | null) => void;
-  setIframeError: (error: IframeError | null) => void;
-  setIsContinuing: (continuing: boolean) => void;
-  setFollowUpInput: (input: string) => void;
+  setChatId: (_chatId: string) => void;
+  addMessage: (_message: ChatMessage) => void;
+  updateMessage: (_messageId: string, _updates: Partial<ChatMessage>) => void;
+  setChatLoading: (_loading: boolean) => void;
+  setChatError: (_error: string | null) => void;
+  setIframeError: (_error: IframeError | null) => void;
+  setIsContinuing: (_continuing: boolean) => void;
+  setFollowUpInput: (_input: string) => void;
   clearChat: () => void;
   clearIframeError: () => void;
-  initializeChat: (chatId: string, messages?: ChatMessage[]) => void;
+  initializeChat: (_chatId: string, _messages?: ChatMessage[]) => void;
 }
 
 export const useChatStore = create<ChatStoreState>((set) => ({

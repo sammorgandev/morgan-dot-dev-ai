@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -30,17 +30,20 @@ export function MemoryGame() {
   const showSequence = useCallback((seq: number[]) => {
     setIsShowingSequence(true);
     setActiveColor(-1);
-    
+
     seq.forEach((colorIndex, index) => {
       setTimeout(() => {
         setActiveColor(colorIndex);
       }, index * 600);
-      
-      setTimeout(() => {
-        setActiveColor(-1);
-      }, index * 600 + 300);
+
+      setTimeout(
+        () => {
+          setActiveColor(-1);
+        },
+        index * 600 + 300
+      );
     });
-    
+
     setTimeout(() => {
       setIsShowingSequence(false);
     }, seq.length * 600);
@@ -48,27 +51,30 @@ export function MemoryGame() {
 
   const handleColorClick = (colorIndex: number) => {
     if (isShowingSequence || gameOver) return;
-    
+
     const newPlayerSequence = [...playerSequence, colorIndex];
     setPlayerSequence(newPlayerSequence);
-    
+
     if (newPlayerSequence[currentIndex] !== sequence[currentIndex]) {
       setGameOver(true);
       setIsPlaying(false);
       return;
     }
-    
+
     if (newPlayerSequence.length === sequence.length) {
       // Player completed the sequence
       const newScore = score + 1;
       setScore(newScore);
       setCurrentIndex(0);
       setPlayerSequence([]);
-      
+
       // Add new color to sequence
-      const newSequence = [...sequence, Math.floor(Math.random() * COLORS.length)];
+      const newSequence = [
+        ...sequence,
+        Math.floor(Math.random() * COLORS.length),
+      ];
       setSequence(newSequence);
-      
+
       setTimeout(() => {
         showSequence(newSequence);
       }, 1000);
@@ -78,9 +84,10 @@ export function MemoryGame() {
   };
 
   const getColorClass = (colorIndex: number): string => {
-    const baseClasses = "w-20 h-20 rounded-lg border-4 cursor-pointer transition-all duration-200 flex items-center justify-center text-white font-bold";
+    const baseClasses =
+      "w-20 h-20 rounded-lg border-4 cursor-pointer transition-all duration-200 flex items-center justify-center text-white font-bold";
     const isActive = activeColor === colorIndex;
-    
+
     switch (COLORS[colorIndex]) {
       case "red":
         return `${baseClasses} ${isActive ? "bg-red-400 border-red-300" : "bg-red-500 border-red-400"} hover:bg-red-400`;
@@ -123,7 +130,7 @@ export function MemoryGame() {
 
         {/* Game Grid */}
         <div className="grid grid-cols-3 gap-3 justify-items-center">
-          {COLORS.map((color, index) => (
+          {COLORS.map((_, index) => (
             <button
               key={index}
               className={getColorClass(index)}

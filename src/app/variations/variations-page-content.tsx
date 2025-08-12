@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Calendar, MessageSquare } from "lucide-react";
+import Image from "next/image";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 
@@ -45,10 +46,13 @@ function ProjectCard({ project }: { project: ProjectWithDemos }) {
       {/* Screenshot Preview */}
       <div className="relative h-48 bg-muted">
         {screenshotUrl ? (
-          <img
+          <Image
             src={screenshotUrl}
             alt={`Preview of ${project.prompt}`}
             className="w-full h-full object-cover"
+            width={400}
+            height={200}
+            priority={false}
           />
         ) : project.demoUrl ? (
           <iframe

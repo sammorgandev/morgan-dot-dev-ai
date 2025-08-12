@@ -105,7 +105,7 @@ export class DeploymentService {
   /**
    * Create a deployment using v0 Platform API
    */
-  private async createV0Deployment(config: DeploymentConfig): Promise<{
+  private async createV0Deployment(_config: DeploymentConfig): Promise<{
     success: boolean;
     deploymentId?: string;
     error?: string;

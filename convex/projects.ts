@@ -320,7 +320,7 @@ export const saveChatMessage = mutation({
       role: args.role,
       content: args.content,
       timestamp: now,
-      metadata: args.metadata,
+      ...(args.metadata && { metadata: args.metadata }),
     });
 
     // Update chat session
@@ -380,7 +380,7 @@ export const saveChatMessages = mutation({
         role: message.role,
         content: message.content,
         timestamp: now,
-        metadata: message.metadata,
+        ...(message.metadata && { metadata: message.metadata }),
       });
     }
 
