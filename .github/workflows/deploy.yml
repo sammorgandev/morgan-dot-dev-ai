@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env.production for build
+        run: |
+          cat > .env.production <<'EOF'
+          NEXT_PUBLIC_CONVEX_URL=${{ vars.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+          EOF
       - uses: actions/setup-node@v4
         with:
           node-version: 22
