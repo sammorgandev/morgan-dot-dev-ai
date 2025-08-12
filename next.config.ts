@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
   },
 
   // Headers for better security and performance
+  output: 'standalone',
   async headers() {
     return [
       {

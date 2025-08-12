@@ -1,0 +1,42 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+      - name: Create runtime tarball
+        run: |
+          set -e
+          mkdir -p artifacts
+          TAR=artifacts/next-${GITHUB_SHA::7}.tgz
+          tar -czf "$TAR" .next/standalone .next/static public
+          echo "TARBALL=$TAR" >> $GITHUB_ENV
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Write known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s\n" "${{ secrets.SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload artifact to server
+        run: scp "$TARBALL" ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/
+      - name: Run deploy script on server
+        run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '~/scripts/deploy_sam_morgan_dev.sh /tmp/$(basename "$TARBALL")'
